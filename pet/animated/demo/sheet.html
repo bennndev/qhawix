@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Owl mascot contact sheet</title>
+<style>
+  :root { --mascot-ink: #111; }
+  body { margin: 0; padding: 12px; background: #fff; font: 13px system-ui, sans-serif; color: #111; }
+  .row { display: flex; align-items: center; gap: 4px; }
+  .row h2 { width: 80px; font-size: 14px; margin: 0; }
+  figure { margin: 0; text-align: center; }
+  figure div { width: 190px; height: 190px; }
+  svg { width: 100%; height: 100%; overflow: visible; }
+</style>
+</head>
+<body>
+<div id="sheet"></div>
+<script type="module">
+  import { createMascot } from '../src/mascot-engine.js';
+  // Which instants to sample per state (ms into the track time line).
+  const SAMPLES = {
+    idle: [0, 1500, 2700, 3700, 5430],
+    thinking: [0, 900, 1800, 2700, 3400],
+    working: [0, 400, 850, 1300, 1700],
+    success: [0, 280, 950, 1290, 1700, 2200],
+  };
+  const [spec, svg] = await Promise.all([
+    fetch('../src/mascot.spec.json').then((r) => r.json()),
+    fetch('../assets/mascot.svg').then((r) => r.text()),
+  ]);
+  const sheet = document.getElementById('sheet');
+  for (const [state, times] of Object.entries(SAMPLES)) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<h2>${state}</h2>`;
+    for (const t of times) {
+      const cell = document.createElement('figure');
+      cell.innerHTML = `<div>${svg}</div><figcaption>${t} ms</figcaption>`;
+      row.append(cell);
+      const m = createMascot(cell.querySelector('svg'), spec, { reducedMotion: false });
+      m.setState(state, { blend: false });
+      m.seek(t);
+    }
+    sheet.append(row);
+  }
+  document.title = 'ready';
+</script>
+</body>
+</html>

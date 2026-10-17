@@ -1,0 +1,12 @@
+{
+  "name": "mascot-animation",
+  "private": true,
+  "type": "module",
+  "description": "Framework-free animation rig for the owl mascot (pet/behav.svg)",
+  "scripts": {
+    "build": "node scripts/build-rig.mjs",
+    "start": "node scripts/serve.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "sheet": "node scripts/sheet.mjs"
+  }
+}
