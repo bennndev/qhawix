@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Owl mascot demo</title>
 <style>
-  :root { --mascot-ink: #111; --bg: #fafafa; --fg: #111; --accent: #111; }
-  @media (prefers-color-scheme: dark) { :root { --mascot-ink: #f4f4f4; --bg: #151515; --fg: #f4f4f4; --accent: #f4f4f4; } }
+  :root { --bg: #fafafa; --fg: #111; --accent: #111; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #151515; --fg: #f4f4f4; --accent: #f4f4f4; } }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; gap: 1rem; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; }
   main { display: grid; justify-items: center; gap: 1rem; padding: 1rem; }
   #stage { width: min(80vw, 420px); aspect-ratio: 1; }
@@ -15,6 +15,9 @@
   button { font: inherit; padding: .5rem 1rem; border: 2px solid var(--accent); border-radius: 999px; background: transparent; color: var(--fg); cursor: pointer; }
   button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
   button:focus-visible { outline: 3px solid #4a8cff; outline-offset: 2px; }
+  #themes { display: flex; gap: .6rem; }
+  #themes button { width: 2.2rem; height: 2.2rem; padding: 0; border: 3px solid transparent; background: var(--swatch); }
+  #themes button[aria-pressed="true"] { border-color: var(--fg); }
   #status { min-height: 1.4em; opacity: .7; }
 </style>
 </head>
@@ -27,13 +30,15 @@
     <button data-state="working">working</button>
     <button data-state="success">success</button>
   </nav>
+  <nav id="themes" aria-label="Mascot colour"></nav>
   <p id="status" role="status" aria-live="polite"></p>
 </main>
 <script type="module">
   import { createMascot } from '../src/mascot-engine.js';
-  const [spec, svg] = await Promise.all([
+  const [spec, svg, palette] = await Promise.all([
     fetch('../src/mascot.spec.json').then((r) => r.json()),
     fetch('../assets/mascot.svg').then((r) => r.text()),
+    fetch('../src/mascot.themes.json').then((r) => r.json()),
   ]);
   document.getElementById('stage').innerHTML = svg;
   const mascot = createMascot(document.querySelector('#stage svg'), spec);
@@ -45,6 +50,19 @@
   });
   buttons.forEach((b) => b.addEventListener('click', () => mascot.setState(b.dataset.state)));
   buttons[0].setAttribute('aria-pressed', 'true');
+  const stage = document.getElementById('stage');
+  const swatches = palette.themes.map((theme) => {
+    const b = document.createElement('button');
+    b.style.setProperty('--swatch', theme.body);
+    b.setAttribute('aria-label', theme.name);
+    b.addEventListener('click', () => {
+      stage.style.setProperty('--mascot-body', theme.body);
+      swatches.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+    });
+    document.getElementById('themes').append(b);
+    return b;
+  });
+  swatches[palette.themes.findIndex((t) => t.id === palette.default)].click();
   window.mascot = mascot; // handy from the console
 </script>
 </body>

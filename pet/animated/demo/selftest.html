@@ -66,6 +66,55 @@
     check('reduced motion does not animate', a === tf('gearA'), `${a} vs ${tf('gearA')}`);
     calm.destroy();
 
+    // Themes: the body colour comes from --mascot-body and every theme in the palette is a valid hex.
+    const palette = await fetch('../src/mascot.themes.json').then((r) => r.json());
+    check('palette has the 6 reference colours', palette.themes.length === 6 && palette.themes.every((t) => /^#[0-9A-F]{6}$/.test(t.body)), JSON.stringify(palette.themes));
+    const body = root.querySelector('path.sil');
+    root.style.setProperty('--mascot-body', '#9259FE');
+    check('theme colour recolours the body', getComputedStyle(body).fill === 'rgb(146, 89, 254)', getComputedStyle(body).fill);
+    root.style.removeProperty('--mascot-body');
+
+    // The form must not change: the idle silhouette equals the original artwork's (flood fill from outside).
+    const rest = createMascot(root, spec, { reducedMotion: false });
+    rest.setState('idle', { blend: false }); rest.seek(0);
+    const N = 500;
+    const toImage = (markup) => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+    });
+    const silhouette = async (markup) => {
+      const img = await toImage(markup);
+      const c = document.createElement('canvas'); c.width = c.height = N;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.fillStyle = '#fff'; g.fillRect(0, 0, N, N); g.drawImage(img, 0, 0, N, N);
+      const px = g.getImageData(0, 0, N, N).data;
+      const outside = new Uint8Array(N * N);
+      const isWhite = (i) => px[i * 4] > 235 && px[i * 4 + 1] > 235 && px[i * 4 + 2] > 235;
+      const stack = [];
+      for (let k = 0; k < N; k++) for (const i of [k, (N - 1) * N + k, k * N, k * N + N - 1]) if (!outside[i] && isWhite(i)) { outside[i] = 1; stack.push(i); }
+      while (stack.length) {
+        const i = stack.pop(); const x = i % N; const y = (i / N) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx; const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+          const j = ny * N + nx;
+          if (!outside[j] && isWhite(j)) { outside[j] = 1; stack.push(j); }
+        }
+      }
+      return outside;
+    };
+    const original = await (await fetch('/original.svg')).text();
+    const clone = root.cloneNode(true);
+    clone.querySelector('[data-part="fx"]').remove();
+    clone.setAttribute('width', N); clone.setAttribute('height', N);
+    const [want, got] = await Promise.all([silhouette(original.replace('<svg ', `<svg width="${N}" height="${N}" `)), silhouette(new XMLSerializer().serializeToString(clone))]);
+    let inter = 0, union = 0;
+    for (let i = 0; i < N * N; i++) { const p = !want[i], q = !got[i]; if (p && q) inter++; if (p || q) union++; }
+    check('idle silhouette equals the original outline (IoU >= 0.998)', inter / union >= 0.998, `IoU ${(inter / union).toFixed(5)}`);
+    rest.destroy();
+
     // Spec/rig drift is loud.
     let threw = false;
     try { createMascot(document.createElementNS('http://www.w3.org/2000/svg', 'svg'), spec); } catch { threw = true; }

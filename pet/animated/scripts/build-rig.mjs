@@ -1,6 +1,7 @@
 // Derives the animatable rig (assets/mascot.svg) from the untouched original (../behav.svg).
-// The original keeps its stroke-based source in the hidden layer "Capa_2": one element per body
-// part. We reuse that geometry verbatim and only add structure (data-part groups) and FX overlays.
+// All geometry comes from the visible layer "Capa_1" (the real artwork): a compound path whose first
+// subpath is the outer outline and the rest are the white regions, plus the two eye rings. We only
+// recolour it and add structure (data-part groups) and FX overlays; no outline is redrawn.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -8,61 +9,79 @@ const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 export const SOURCE = here('../../behav.svg');
 export const TARGET = here('../assets/mascot.svg');
 
-const EYE_R = 66; // matches the ring weight of the visible layer (Capa_1)
-const INK = 'class="ink"';
+const STROKE = 46.6006; // weight of the original outline: the band that stays body-coloured
+const THIN = 18; // how much the white lines are slimmed down (regions grow by half of this per side)
+// Centres of the two eye rings (bounding boxes measured from the ring paths in behav.svg).
+const EYE_L = [822.25, 780.8];
+const EYE_R = [1211.45, 781.1];
+
+// Ear tufts: the outline's top corners are cut out as independent pieces that pivot at their base.
+// `TUFT_CORE` is carved out of the static silhouette; `TUFT_PIECE` (core + a margin that overlaps the
+// head, same colour) is what moves, so at rest the union is exactly the original outline with no seam.
+const AXIS = 2036; // mirror axis x2 (the artwork is symmetric around x = 1018)
+const TUFT_CORE = [[430, 330], [690, 330], [640, 440], [590, 525], [548, 556], [430, 556]];
+const TUFT_PIECE = [[430, 330], [725, 330], [670, 450], [615, 540], [548, 556], [430, 556]];
+const polygon = (pts, mirror = false) =>
+  `M${pts.map(([x, y]) => `${mirror ? AXIS - x : x},${y}`).join('L')}Z`;
 
 const squash = (s) => s.replace(/\s+/g, ' ').trim();
 
-function readLayer(svg) {
-  const layer = svg.match(/<g id="Capa_2"[^>]*>([\s\S]*?)<\/g>/);
-  if (!layer) throw new Error('behav.svg: layer "Capa_2" not found');
-  const body = layer[1];
-  return {
-    paths: [...body.matchAll(/<path class="st1" d="([^"]+)"/g)].map((m) => squash(m[1])),
-    circles: [...body.matchAll(/<circle class="st1" cx="([\d.]+)" cy="([\d.]+)"/g)].map((m) => [+m[1], +m[2]]),
-    lines: [...body.matchAll(/<line class="st1" x1="([\d.]+)" y1="([\d.]+)" x2="([\d.]+)" y2="([\d.]+)"/g)].map((m) => m.slice(1, 5)),
-  };
+function readArtwork(svg) {
+  const visible = svg.split('id="Capa_2"')[0];
+  const paths = [...visible.matchAll(/<path d="([^"]+)"/g)].map((m) => squash(m[1]));
+  if (paths.length !== 3) throw new Error(`behav.svg: expected 3 paths in Capa_1, found ${paths.length}`);
+  const [compound, ringR, ringL] = paths;
+  const subpaths = compound.split(/(?=M)/);
+  if (subpaths.length !== 8) throw new Error(`behav.svg: expected 8 subpaths in the compound path, found ${subpaths.length}`);
+  const [outline, ...regions] = subpaths;
+  return { compound, outline, regions: regions.join(''), ringR, ringL };
 }
 
 export function buildRig(svg) {
-  const { paths, circles, lines } = readLayer(svg);
-  if (paths.length !== 7 || circles.length !== 2 || lines.length !== 1) {
-    throw new Error(`behav.svg: unexpected Capa_2 structure (${paths.length} paths, ${circles.length} circles, ${lines.length} lines)`);
-  }
-  const [browR, browL, beak, body, forehead, cheekL, cheekR] = paths;
-  const [eyeL, eyeR] = circles;
-  const [sx1, sy1, sx2, sy2] = lines[0];
-  const eye = (name, [cx, cy]) =>
-    `<g data-part="${name}"><circle ${INK} cx="${cx}" cy="${cy}" r="${EYE_R}"/></g>`;
+  const { compound, outline, regions, ringR, ringL } = readArtwork(svg);
+  const eye = (name, ring) => `<g data-part="${name}"><path class="eye" d="${ring}"/></g>`;
   const happy = (name, [cx, cy]) =>
-    `<path data-part="${name}" ${INK} d="M${cx - 62},${cy + 24}Q${cx},${cy - 62} ${cx + 62},${cy + 24}"/>`;
-  const dot = (name, cx, cy, r) => `<circle data-part="${name}" class="fill" cx="${cx}" cy="${cy}" r="${r}"/>`;
+    `<path data-part="${name}" class="happy" d="M${cx - 62},${cy + 24}Q${cx},${cy - 62} ${cx + 62},${cy + 24}"/>`;
+  const dot = (name, cx, cy, r) => `<circle data-part="${name}" class="fx-fill" cx="${cx}" cy="${cy}" r="${r}"/>`;
   const gear = (name, cx, cy, k) =>
-    `<g data-part="${name}"><circle ${INK} cx="${cx}" cy="${cy}" r="${64 * k}" stroke-width="${26 * k}" stroke-dasharray="${20.1 * k} ${20.1 * k}"/>` +
-    `<circle ${INK} cx="${cx}" cy="${cy}" r="${40 * k}" stroke-width="${20 * k}"/></g>`;
+    `<g data-part="${name}"><circle class="fx" cx="${cx}" cy="${cy}" r="${64 * k}" stroke-width="${26 * k}" stroke-dasharray="${20.1 * k} ${20.1 * k}"/>` +
+    `<circle class="fx" cx="${cx}" cy="${cy}" r="${40 * k}" stroke-width="${20 * k}"/></g>`;
   const spark = (name, cx, cy) =>
-    `<g data-part="${name}"><path ${INK} d="M${cx - 46},${cy}H${cx + 46}M${cx},${cy - 46}V${cy + 46}"/></g>`;
+    `<g data-part="${name}"><path class="fx" d="M${cx - 46},${cy}H${cx + 46}M${cx},${cy - 46}V${cy + 46}"/></g>`;
 
   return `<?xml version="1.0" encoding="utf-8"?>
-<!-- GENERATED by scripts/build-rig.mjs from pet/behav.svg (layer Capa_2). Do not edit by hand. -->
+<!-- GENERATED by scripts/build-rig.mjs from pet/behav.svg (layer Capa_1). Do not edit by hand. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" role="img" aria-label="Owl mascot">
 <style>
-  .ink{fill:none;stroke:var(--mascot-ink,#000);stroke-width:46.6006;stroke-miterlimit:10;stroke-linecap:round;stroke-linejoin:round}
-  .fill{fill:var(--mascot-ink,#000)}
+  /* Theme: set --mascot-body (bot colour) and optionally --mascot-line (details, default white). */
+  .sil{fill:var(--mascot-body,#00BBA6)}
+  .web{fill:var(--mascot-line,#fff)}
+  .thin{fill:var(--mascot-body,#00BBA6);stroke:var(--mascot-body,#00BBA6);stroke-width:${THIN};stroke-linejoin:round}
+  .eye{fill:var(--mascot-line,#fff)}
+  .happy{fill:none;stroke:var(--mascot-line,#fff);stroke-width:${STROKE};stroke-linecap:round}
+  .fx{fill:none;stroke:var(--mascot-body,#00BBA6);stroke-width:${STROKE};stroke-linecap:round;stroke-linejoin:round}
+  .fx-fill{fill:var(--mascot-body,#00BBA6)}
 </style>
+<defs>
+  <!-- Hides the original outline band so only the inner lines are drawn in the detail colour. -->
+  <clipPath id="mascot-body-clip"><path clip-rule="evenodd" d="M0,0H2000V2000H0Z${polygon(TUFT_CORE)}${polygon(TUFT_CORE, true)}"/></clipPath>
+  <clipPath id="mascot-tuft-l"><path d="${polygon(TUFT_PIECE)}"/></clipPath>
+  <clipPath id="mascot-tuft-r"><path d="${polygon(TUFT_PIECE, true)}"/></clipPath>
+  <mask id="mascot-inner" maskUnits="userSpaceOnUse" x="0" y="0" width="2000" height="2000">
+    <rect width="2000" height="2000" fill="#fff"/>
+    <path d="${outline}" fill="none" stroke="#000" stroke-width="${STROKE * 2}" stroke-linejoin="round"/>
+  </mask>
+</defs>
 <g data-part="root">
-  <path data-part="body" ${INK} d="${body}"/>
-  <path data-part="forehead" ${INK} d="${forehead}"/>
-  <path data-part="cheekL" ${INK} d="${cheekL}"/>
-  <path data-part="cheekR" ${INK} d="${cheekR}"/>
-  <line data-part="spine" ${INK} x1="${sx1}" y1="${sy1}" x2="${sx2}" y2="${sy2}"/>
-  <path data-part="browL" ${INK} d="${browL}"/>
-  <path data-part="browR" ${INK} d="${browR}"/>
-  <path data-part="beak" ${INK} d="${beak}"/>
-  ${eye('eyeL', eyeL)}
-  ${eye('eyeR', eyeR)}
-  ${happy('happyL', eyeL)}
-  ${happy('happyR', eyeR)}
+  <path class="sil" clip-path="url(#mascot-body-clip)" d="${outline}"/>
+  <path data-part="browL" class="sil" clip-path="url(#mascot-tuft-l)" d="${outline}"/>
+  <path data-part="browR" class="sil" clip-path="url(#mascot-tuft-r)" d="${outline}"/>
+  <path class="web" mask="url(#mascot-inner)" d="${compound}"/>
+  <path class="thin" d="${regions}"/>
+  ${eye('eyeL', ringL)}
+  ${eye('eyeR', ringR)}
+  ${happy('happyL', EYE_L)}
+  ${happy('happyR', EYE_R)}
 </g>
 <g data-part="fx">
   ${dot('dot1', 1690, 280, 26)}
@@ -70,7 +89,7 @@ export function buildRig(svg) {
   ${dot('dot3', 1890, 90, 50)}
   ${gear('gearA', 1760, 300, 1)}
   ${gear('gearB', 1880, 430, 0.6)}
-  <path data-part="check" ${INK} pathLength="1" d="M1690,330L1770,410L1900,250"/>
+  <path data-part="check" class="fx" pathLength="1" d="M1690,330L1770,410L1900,250"/>
   ${spark('spark1', 440, 300)}
   ${spark('spark2', 1790, 700)}
   ${spark('spark3', 420, 1000)}

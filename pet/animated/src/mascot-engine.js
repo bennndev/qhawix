@@ -66,15 +66,16 @@ export function createMascot(root, spec, options = {}) {
   let token = 0;
 
   for (const [name, cfg] of Object.entries(spec.parts)) {
-    const el = root.querySelector(`[data-part="${name}"]`);
-    if (!el) throw new Error(`Rig has no element data-part="${name}"`);
-    elements[name] = el;
-    el.style.transformBox = 'fill-box';
-    el.style.transformOrigin = `${(cfg.origin?.[0] ?? 0.5) * 100}% ${(cfg.origin?.[1] ?? 0.5) * 100}%`;
-    if (cfg.rest && 'd' in cfg.rest) {
-      drawable.add(name);
-      el.style.strokeDasharray = '1';
+    // A part may be drawn by several elements (e.g. a fill layer and a line layer): they share one track.
+    const els = [...root.querySelectorAll(`[data-part="${name}"]`)];
+    if (!els.length) throw new Error(`Rig has no element data-part="${name}"`);
+    elements[name] = els;
+    for (const el of els) {
+      el.style.transformBox = 'fill-box';
+      el.style.transformOrigin = `${(cfg.origin?.[0] ?? 0.5) * 100}% ${(cfg.origin?.[1] ?? 0.5) * 100}%`;
+      if (cfg.rest && 'd' in cfg.rest) el.style.strokeDasharray = '1';
     }
+    if (cfg.rest && 'd' in cfg.rest) drawable.add(name);
     applyRest(name);
   }
 
@@ -84,14 +85,15 @@ export function createMascot(root, spec, options = {}) {
 
   function applyRest(name) {
     const frame = restFrame(name);
-    const el = elements[name];
-    el.style.transform = frame.transform;
-    el.style.opacity = frame.opacity;
-    if ('strokeDashoffset' in frame) el.style.strokeDashoffset = frame.strokeDashoffset;
+    for (const el of elements[name]) {
+      el.style.transform = frame.transform;
+      el.style.opacity = frame.opacity;
+      if ('strokeDashoffset' in frame) el.style.strokeDashoffset = frame.strokeDashoffset;
+    }
   }
 
   function capture(name) {
-    const cs = getComputedStyle(elements[name]);
+    const cs = getComputedStyle(elements[name][0]);
     return {
       transform: cs.transform,
       opacity: cs.opacity,
@@ -118,11 +120,13 @@ export function createMascot(root, spec, options = {}) {
     current = name;
 
     const tracked = new Map(state.tracks.map((t) => [t.part, t]));
-    for (const [part, el] of Object.entries(elements)) {
+    for (const [part, els] of Object.entries(elements)) {
       const track = tracked.get(part);
       const first = track ? toFrame(pose(track.keyframes[0], spec.parts[part].rest ?? {}), drawable.has(part)) : restFrame(part);
       if (blendMs) {
-        animations.push(el.animate([snapshot[part], first], { duration: blendMs, easing: 'ease-out', fill: track ? 'none' : 'forwards' }));
+        for (const el of els) {
+          animations.push(el.animate([snapshot[part], first], { duration: blendMs, easing: 'ease-out', fill: track ? 'none' : 'forwards' }));
+        }
       } else if (!track) {
         applyRest(part);
       }
@@ -136,16 +140,19 @@ export function createMascot(root, spec, options = {}) {
         offset: kf.offset,
         easing: kf.ease ?? track.easing ?? 'ease-in-out',
       }));
-      const anim = elements[track.part].animate(frames, {
-        duration: track.duration,
-        delay: blendMs,
-        iterations: state.loop ? Infinity : 1,
-        fill: state.loop ? 'none' : 'forwards',
+      const created = elements[track.part].map((el) => {
+        const anim = el.animate(frames, {
+          duration: track.duration,
+          delay: blendMs,
+          iterations: state.loop ? Infinity : 1,
+          fill: state.loop ? 'none' : 'forwards',
+        });
+        anim.playbackRate = opts.speed;
+        return anim;
       });
-      anim.playbackRate = opts.speed;
-      animations.push(anim);
+      animations.push(...created);
       if (!state.loop && track.duration === longest) {
-        anim.finished.then(() => token === mine && state.next && setState(state.next)).catch((error) => {
+        created[0].finished.then(() => token === mine && state.next && setState(state.next)).catch((error) => {
           if (error?.name !== 'AbortError') console.error('mascot: transition failed', error);
         });
       }

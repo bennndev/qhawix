@@ -17,20 +17,14 @@
   },
   "browL": {
    "origin": [
-    0.75,
-    0.85
+    0.086,
+    0.137
    ]
   },
   "browR": {
    "origin": [
-    0.25,
-    0.85
-   ]
-  },
-  "beak": {
-   "origin": [
-    0.5,
-    0
+    0.914,
+    0.137
    ]
   },
   "eyeL": {
@@ -257,7 +251,8 @@
       },
       {
        "offset": 0.5,
-       "y": -5
+       "r": -2,
+       "y": -2
       },
       {
        "offset": 1
@@ -273,7 +268,8 @@
       },
       {
        "offset": 0.5,
-       "y": -5
+       "r": 2,
+       "y": -2
       },
       {
        "offset": 1
@@ -304,48 +300,6 @@
        "offset": 1,
        "r": -4,
        "y": 0
-      }
-     ]
-    },
-    {
-     "part": "browL",
-     "duration": 3600,
-     "keyframes": [
-      {
-       "offset": 0,
-       "y": -26,
-       "r": -6
-      },
-      {
-       "offset": 0.5,
-       "y": -31,
-       "r": -8
-      },
-      {
-       "offset": 1,
-       "y": -26,
-       "r": -6
-      }
-     ]
-    },
-    {
-     "part": "browR",
-     "duration": 3600,
-     "keyframes": [
-      {
-       "offset": 0,
-       "y": 10,
-       "r": 5
-      },
-      {
-       "offset": 0.5,
-       "y": 14,
-       "r": 6
-      },
-      {
-       "offset": 1,
-       "y": 10,
-       "r": 5
       }
      ]
     },
@@ -418,24 +372,6 @@
        "x": 12,
        "y": -13,
        "sy": 0.92
-      }
-     ]
-    },
-    {
-     "part": "beak",
-     "duration": 3600,
-     "keyframes": [
-      {
-       "offset": 0,
-       "y": 0
-      },
-      {
-       "offset": 0.5,
-       "y": 4
-      },
-      {
-       "offset": 1,
-       "y": 0
       }
      ]
     },
@@ -521,6 +457,45 @@
        "o": 0.15
       }
      ]
+    },
+    {
+     "part": "browL",
+     "duration": 3600,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": -6,
+       "y": -2
+      },
+      {
+       "offset": 0.5,
+       "r": -8,
+       "y": -3
+      },
+      {
+       "offset": 1,
+       "r": -6,
+       "y": -2
+      }
+     ]
+    },
+    {
+     "part": "browR",
+     "duration": 3600,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": -5
+      },
+      {
+       "offset": 0.5,
+       "r": -7
+      },
+      {
+       "offset": 1,
+       "r": -5
+      }
+     ]
     }
    ]
   },
@@ -548,48 +523,6 @@
        "y": 0,
        "sy": 1,
        "r": 0
-      }
-     ]
-    },
-    {
-     "part": "browL",
-     "duration": 1800,
-     "keyframes": [
-      {
-       "offset": 0,
-       "y": 14,
-       "r": 4
-      },
-      {
-       "offset": 0.5,
-       "y": 19,
-       "r": 5
-      },
-      {
-       "offset": 1,
-       "y": 14,
-       "r": 4
-      }
-     ]
-    },
-    {
-     "part": "browR",
-     "duration": 1800,
-     "keyframes": [
-      {
-       "offset": 0,
-       "y": 14,
-       "r": -4
-      },
-      {
-       "offset": 0.5,
-       "y": 19,
-       "r": -5
-      },
-      {
-       "offset": 1,
-       "y": 14,
-       "r": -4
       }
      ]
     },
@@ -666,22 +599,6 @@
      ]
     },
     {
-     "part": "beak",
-     "duration": 520,
-     "keyframes": [
-      {
-       "offset": 0
-      },
-      {
-       "offset": 0.5,
-       "y": 6
-      },
-      {
-       "offset": 1
-      }
-     ]
-    },
-    {
      "part": "gearA",
      "duration": 2400,
      "keyframes": [
@@ -714,6 +631,42 @@
       }
      ],
      "easing": "linear"
+    },
+    {
+     "part": "browL",
+     "duration": 1800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": 5
+      },
+      {
+       "offset": 0.5,
+       "r": 7
+      },
+      {
+       "offset": 1,
+       "r": 5
+      }
+     ]
+    },
+    {
+     "part": "browR",
+     "duration": 1800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": -5
+      },
+      {
+       "offset": 0.5,
+       "r": -7
+      },
+      {
+       "offset": 1,
+       "r": -5
+      }
+     ]
     }
    ]
   },
@@ -885,62 +838,6 @@
       }
      ],
      "easing": "linear"
-    },
-    {
-     "part": "browL",
-     "duration": 2800,
-     "keyframes": [
-      {
-       "offset": 0
-      },
-      {
-       "offset": 0.2
-      },
-      {
-       "offset": 0.28,
-       "y": -24,
-       "r": -5
-      },
-      {
-       "offset": 0.78,
-       "y": -24,
-       "r": -5
-      },
-      {
-       "offset": 0.9
-      },
-      {
-       "offset": 1
-      }
-     ]
-    },
-    {
-     "part": "browR",
-     "duration": 2800,
-     "keyframes": [
-      {
-       "offset": 0
-      },
-      {
-       "offset": 0.2
-      },
-      {
-       "offset": 0.28,
-       "y": -24,
-       "r": 5
-      },
-      {
-       "offset": 0.78,
-       "y": -24,
-       "r": 5
-      },
-      {
-       "offset": 0.9
-      },
-      {
-       "offset": 1
-      }
-     ]
     },
     {
      "part": "check",
@@ -1150,6 +1047,62 @@
       }
      ],
      "easing": "ease-out"
+    },
+    {
+     "part": "browL",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.2
+      },
+      {
+       "offset": 0.28,
+       "r": -7,
+       "y": -3
+      },
+      {
+       "offset": 0.78,
+       "r": -7,
+       "y": -3
+      },
+      {
+       "offset": 0.9
+      },
+      {
+       "offset": 1
+      }
+     ]
+    },
+    {
+     "part": "browR",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.2
+      },
+      {
+       "offset": 0.28,
+       "r": 7,
+       "y": -3
+      },
+      {
+       "offset": 0.78,
+       "r": 7,
+       "y": -3
+      },
+      {
+       "offset": 0.9
+      },
+      {
+       "offset": 1
+      }
+     ]
     }
    ]
   }

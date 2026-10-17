@@ -63,8 +63,13 @@ export async function evaluateWhenReady(browser, url, expression, { timeoutMs = 
     });
     let id = 0;
     const pending = new Map();
+    let pageError = null;
     ws.onmessage = ({ data }) => {
       const msg = JSON.parse(data);
+      if (msg.method === 'Runtime.exceptionThrown') {
+        const d = msg.params.exceptionDetails;
+        pageError = `${d.exception?.description ?? d.text} (line ${d.lineNumber + 1})`;
+      }
       pending.get(msg.id)?.(msg);
     };
     const call = (method, params) =>
@@ -72,7 +77,9 @@ export async function evaluateWhenReady(browser, url, expression, { timeoutMs = 
         pending.set(++id, resolve);
         ws.send(JSON.stringify({ id, method, params }));
       });
+    await call('Runtime.enable');
     while (Date.now() < deadline) {
+      if (pageError) throw new Error(`page threw: ${pageError}`);
       const { result } = await call('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
       const value = result?.result?.value;
       if (typeof value === 'string' && value !== 'pending') {

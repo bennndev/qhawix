@@ -7,11 +7,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css' };
 
+// The untouched original artwork lives outside the served root; the tests read it through this alias.
+const ORIGINAL = normalize(join(ROOT, '..', 'behav.svg'));
+
 export function serve(port = 0) {
   const server = createServer(async (req, res) => {
     const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    const file = normalize(join(ROOT, url.endsWith('/') ? `${url}index.html` : url));
-    if (!file.startsWith(ROOT)) return res.writeHead(403).end();
+    const file = url === '/original.svg' ? ORIGINAL : normalize(join(ROOT, url.endsWith('/') ? `${url}index.html` : url));
+    if (!file.startsWith(ROOT) && file !== ORIGINAL) return res.writeHead(403).end();
     let body;
     try {
       body = await readFile(file);

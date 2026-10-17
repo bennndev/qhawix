@@ -1,0 +1,12 @@
+{
+  "comment": "Body colours sampled from pet/reference/palette.jpg. Apply with the CSS variable --mascot-body; details stay white (--mascot-line).",
+  "default": "teal",
+  "themes": [
+    { "id": "teal", "name": "Teal", "body": "#00BBA6" },
+    { "id": "orange", "name": "Orange", "body": "#FF9702" },
+    { "id": "purple", "name": "Purple", "body": "#9259FE" },
+    { "id": "red", "name": "Red", "body": "#FD253A" },
+    { "id": "blue", "name": "Blue", "body": "#1183FF" },
+    { "id": "pink", "name": "Pink", "body": "#FF309C" }
+  ]
+}

@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <title>Owl mascot contact sheet</title>
 <style>
-  :root { --mascot-ink: #111; }
   body { margin: 0; padding: 12px; background: #fff; font: 13px system-ui, sans-serif; color: #111; }
   .row { display: flex; align-items: center; gap: 4px; }
   .row h2 { width: 80px; font-size: 14px; margin: 0; }
@@ -24,9 +23,10 @@
     working: [0, 400, 850, 1300, 1700],
     success: [0, 280, 950, 1290, 1700, 2200],
   };
-  const [spec, svg] = await Promise.all([
+  const [spec, svg, palette] = await Promise.all([
     fetch('../src/mascot.spec.json').then((r) => r.json()),
     fetch('../assets/mascot.svg').then((r) => r.text()),
+    fetch('../src/mascot.themes.json').then((r) => r.json()),
   ]);
   const sheet = document.getElementById('sheet');
   for (const [state, times] of Object.entries(SAMPLES)) {
@@ -43,6 +43,17 @@
     }
     sheet.append(row);
   }
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = '<h2>themes</h2>';
+  for (const theme of palette.themes) {
+    const cell = document.createElement('figure');
+    cell.innerHTML = `<div>${svg}</div><figcaption>${theme.name}</figcaption>`;
+    cell.style.setProperty('--mascot-body', theme.body);
+    row.append(cell);
+    createMascot(cell.querySelector('svg'), spec, { reducedMotion: false }).seek(0);
+  }
+  sheet.append(row);
   document.title = 'ready';
 </script>
 </body>
