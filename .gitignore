@@ -1,0 +1,6 @@
+# Antigravity MCP config holds a literal token; copy .agents/mcp_config.example.json and fill it locally
+.agents/mcp_config.json
+
+# Personal agent settings
+.claude/settings.local.json
+CLAUDE.local.md
