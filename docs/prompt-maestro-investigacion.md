@@ -15,18 +15,18 @@ El corte inicial fue 2026-10-17, America/Lima. Obtén la fecha efectiva de la nu
 Comienza en modo SOLO LECTURA. Esta solicitud no autoriza cambiar producto, instalar dependencias, ejecutar scripts que escriben producción, comprar servicios, leer secretos, acceder a cuentas remotas, publicar, enviar mensajes o crear commits. Persistir investigación/documentos requiere alcance de escritura explícito del usuario y las reglas del entorno. No conviertas una recomendación en autorización de implementación.
 
 ENTRADAS LOCALES EXACTAS
-- C:/Users/dark_/Desktop/qhawix/docs/propuesta-qhawix.md
-- C:/Users/dark_/Desktop/qhawix/.research/qhawix-feasibility/FINDINGS.md
-- C:/Users/dark_/Desktop/qhawix/.research/guardian-differentiation/FINDINGS.md
-- C:/Users/dark_/Desktop/qhawix/.research/INDEX.md
-- C:/Users/dark_/Desktop/qhawix/odd/tasks/qhawix-project-definition.md
-- C:/Users/dark_/Desktop/qhawix/docs/hack-the-andes-rubrica-sponsors.pdf
-- C:/Users/dark_/Desktop/qhawix/docs/recursos-indicaciones.txt
-- C:/Users/dark_/Desktop/qhawix/docs/echotrap-next (1).pdf
-- C:/Users/dark_/Desktop/qhawix/docs/back-guardian.pdf
-- C:/Users/dark_/Desktop/qhawix/docs/Pitch Ciberseguridad Bancaria Perú (1).md
-- C:/Users/dark_/Desktop/qhawix/docs/Rojo Oscuro Simple y Profesional Habilidades de Presentación Taller Seminario Web Presentación Principal.pdf
-- C:/Users/dark_/Desktop/echo-trap (código externo, inspección solo lectura)
+- docs/propuesta-qhawix.md
+- .research/qhawix-feasibility/FINDINGS.md
+- .research/guardian-differentiation/FINDINGS.md
+- .research/INDEX.md
+- odd/tasks/qhawix-project-definition.md
+- docs/hack-the-andes-rubrica-sponsors.pdf
+- docs/recursos-indicaciones.txt
+- docs/echotrap-next (1).pdf
+- docs/back-guardian.pdf
+- docs/Pitch Ciberseguridad Bancaria Perú (1).md
+- docs/Rojo Oscuro Simple y Profesional Habilidades de Presentación Taller Seminario Web Presentación Principal.pdf
+- echo-trap (código externo, repositorio local no incluido aquí; inspección solo lectura)
 Si una ruta no existe en otro equipo, informa la falta; no inventes haberla leído ni busques credenciales para acceder. La URL pública aportada fue https://echo-trap-web.vercel.app/; una falla de fetch no demuestra caída ni identidad con el checkout. No existe un enlace Figma confirmado en las fuentes: solicitar acceso cuando sea material.
 
 CONOCIMIENTOS INICIALES QUE DEBES CONTRASTAR

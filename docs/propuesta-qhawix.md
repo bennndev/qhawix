@@ -23,7 +23,7 @@
 | Propuesta | Decisión recomendada y pendiente de aprobación | Pausar una transferencia ficticia mediante reglas explícitas |
 | Desconocido | Falta acceso, evidencia o prueba | Disponibilidad real del modelo Gemini configurado |
 
-La investigación combinó documentos, lectura estática del repositorio externo y documentación primaria. Los investigadores utilizaron GPT-6.1 Sol, habilitado por el usuario; no se realizó una revisión con otra familia de modelos. No se instalaron dependencias ni se ejecutaron builds, pruebas del producto o llamadas de inferencia. La herramienta de investigación no pudo acceder a [la URL pública de EchoTrap](https://echo-trap-web.vercel.app/): esto no demuestra caída ni equivalencia con el código local. El detalle y las limitaciones se conservan en el [dossier de evidencia](C:/Users/dark_/Desktop/qhawix/.research/qhawix-feasibility/FINDINGS.md).
+La investigación combinó documentos, lectura estática del repositorio externo y documentación primaria. Los investigadores utilizaron GPT-6.1 Sol, habilitado por el usuario; no se realizó una revisión con otra familia de modelos. No se instalaron dependencias ni se ejecutaron builds, pruebas del producto o llamadas de inferencia. La herramienta de investigación no pudo acceder a [la URL pública de EchoTrap](https://echo-trap-web.vercel.app/): esto no demuestra caída ni equivalencia con el código local. El detalle y las limitaciones se conservan en el [dossier de evidencia](../.research/qhawix-feasibility/FINDINGS.md).
 
 ## 3. Problema, usuario inicial y resultado esperado
 
@@ -115,11 +115,11 @@ La SBS recomienda recontactar por canales oficiales. Banco de la Nación adviert
 | `activarHoneypot.ts:11–50` | Frase predefinida y TTS, reproducidos localmente | No existe toma autónoma de llamada; diferir honeypot |
 | `alerts.ts:4–21` y `schema.ts:6–37` | Alertas en navegador y persistencia parcial | Contacto de confianza no equivale a mensaje enviado |
 
-Localizadores absolutos del código observado: [captura](C:/Users/dark_/Desktop/echo-trap/apps/web/lib/audio/capture.ts), [experiencia](C:/Users/dark_/Desktop/echo-trap/apps/web/components/CallExperience.tsx), [evaluación](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/usecases/evaluarAudio.ts), [detecciones](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/detections.ts), [TruthScan](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/adapters/TruthScanDetectionAdapter.ts), [contenido](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/contenido.ts), [honeypot](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/usecases/activarHoneypot.ts), [alertas](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/alerts.ts) y [esquema](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/schema.ts). Son evidencias estáticas, no pruebas de servicio.
+Localizadores del código observado (rutas relativas a la raíz del repositorio externo EchoTrap, que no se incluye aquí): captura (`apps/web/lib/audio/capture.ts`, EchoTrap), experiencia (`apps/web/components/CallExperience.tsx`, EchoTrap), evaluación (`packages/backend/convex/usecases/evaluarAudio.ts`, EchoTrap), detecciones (`packages/backend/convex/detections.ts`, EchoTrap), TruthScan (`packages/backend/convex/adapters/TruthScanDetectionAdapter.ts`, EchoTrap), contenido (`packages/backend/convex/contenido.ts`, EchoTrap), honeypot (`packages/backend/convex/usecases/activarHoneypot.ts`, EchoTrap), alertas (`packages/backend/convex/alerts.ts`, EchoTrap) y esquema (`packages/backend/convex/schema.ts`, EchoTrap). Son evidencias estáticas, no pruebas de servicio.
 
-La evidencia de Guardian tiene dos niveles, no solo Figma: el [PDF Guardian, pp. 6–8 y 10](C:/Users/dark_/Desktop/qhawix/docs/back-guardian.pdf) propone transferencia/dashboard/modo ultraseguro/PIN (p. 6), inteligencia contextual, identidad, respuesta, datos y explicación (p. 7), coacción, adaptación a zona/hora, saldos ocultos y baja fricción (p. 8); SDK y validación de modelos aparecen como hoja de ruta (p. 10). El [pitch bancario, secciones V.2 y XVI.P4](<C:/Users/dark_/Desktop/qhawix/docs/Pitch Ciberseguridad Bancaria Perú (1).md>) reconoce score simulado y backend desconectado. Son conceptos y limitaciones históricos, no prueba de operación bancaria.
+La evidencia de Guardian tiene dos niveles, no solo Figma: el [PDF Guardian, pp. 6–8 y 10](back-guardian.pdf) propone transferencia/dashboard/modo ultraseguro/PIN (p. 6), inteligencia contextual, identidad, respuesta, datos y explicación (p. 7), coacción, adaptación a zona/hora, saldos ocultos y baja fricción (p. 8); SDK y validación de modelos aparecen como hoja de ruta (p. 10). El [pitch bancario, secciones V.2 y XVI.P4](<Pitch Ciberseguridad Bancaria Perú (1).md>) reconoce score simulado y backend desconectado. Son conceptos y limitaciones históricos, no prueba de operación bancaria.
 
-El 17-10-2026 se inspeccionaron en navegador seis rutas de [Vigía](https://vigia-secure-view.lovable.app/): inicio, llamadas, finanzas, asistente, historial y ajustes. La muestra de falso secuestro generó **92 simulado** y apareció en historial; llamadas se declara simulada, las billeteras son ficticias y el asistente usa reglas. Se observaron controles de configuración, no su persistencia, eliminación ni cumplimiento de privacidad. Esta demo interactiva amplía la evidencia visual, pero no demuestra que Guardian histórico, modelos sensoriales, biometría, interceptación o bloqueo bancario estén implementados. El [dossier Guardian/Vigía](C:/Users/dark_/Desktop/qhawix/.research/guardian-differentiation/FINDINGS.md) conserva procedencia y límites. Las políticas descritas en esta propuesta son inferencias nuevas, no funcionalidades verificadas de Vigía.
+El 17-10-2026 se inspeccionaron en navegador seis rutas de [Vigía](https://vigia-secure-view.lovable.app/): inicio, llamadas, finanzas, asistente, historial y ajustes. La muestra de falso secuestro generó **92 simulado** y apareció en historial; llamadas se declara simulada, las billeteras son ficticias y el asistente usa reglas. Se observaron controles de configuración, no su persistencia, eliminación ni cumplimiento de privacidad. Esta demo interactiva amplía la evidencia visual, pero no demuestra que Guardian histórico, modelos sensoriales, biometría, interceptación o bloqueo bancario estén implementados. El [dossier Guardian/Vigía](../.research/guardian-differentiation/FINDINGS.md) conserva procedencia y límites. Las políticas descritas en esta propuesta son inferencias nuevas, no funcionalidades verificadas de Vigía.
 
 ## 6. Alcance y prioridades
 
@@ -187,7 +187,7 @@ Convex reactivo no equivale a inferencia streaming. Para la demo se propone carg
 
 ## 9. Stack exacto: conservar la base, comprobar compatibilidad
 
-Versiones observadas en [pnpm-lock.yaml:9–88](C:/Users/dark_/Desktop/echo-trap/pnpm-lock.yaml), complementadas por [package.json](C:/Users/dark_/Desktop/echo-trap/package.json). No son una certificación de soporte, seguridad, ejecución ni «última versión».
+Versiones observadas en pnpm-lock.yaml:9–88 (`pnpm-lock.yaml`, EchoTrap), complementadas por package.json (`package.json`, EchoTrap). No son una certificación de soporte, seguridad, ejecución ni «última versión».
 
 | Pieza | Base observada | Tratamiento propuesto |
 |---|---|---|
@@ -222,7 +222,7 @@ Fuentes de tarifas, declaraciones únicas de cada proveedor: [Deepgram](https://
 
 TruthScan documenta flujo asíncrono, archivos de 1 KB a 100 MB y análisis por defecto de los primeros 60 segundos; debe mostrarse truncamiento. Su precisión publicitada superior al 99 % no fue validada independientemente para el caso peruano. Duración mínima útil, SLA, precio y acceso de audio siguen abiertos; no convertir «sin resultado» en «seguro». Fuentes: [API de audio](https://truthscan.com/es/truthscan-ai-audio-detection-api-documentation) y [página comercial](https://truthscan.com/es/ai-voice-detector), consultadas el 17-10-2026.
 
-Resemble es una alternativa documentada, no una recomendación de compra ni evidencia de mejor calidad. Su streaming requiere backend y procesa ventanas de unos cuatro segundos; el mínimo facturable de dos segundos no garantiza suficiencia de una muestra: [API streaming](https://docs.resemble.ai/detect/streaming), consultada el 17-10-2026. Seis clips de cinco segundos a USD 0,035/s cuestan **USD 1,05**, no menos de USD 0,25; se descarta la aritmética antigua del [PDF EchoTrap, p. 12](<C:/Users/dark_/Desktop/qhawix/docs/echotrap-next (1).pdf>).
+Resemble es una alternativa documentada, no una recomendación de compra ni evidencia de mejor calidad. Su streaming requiere backend y procesa ventanas de unos cuatro segundos; el mínimo facturable de dos segundos no garantiza suficiencia de una muestra: [API streaming](https://docs.resemble.ai/detect/streaming), consultada el 17-10-2026. Seis clips de cinco segundos a USD 0,035/s cuestan **USD 1,05**, no menos de USD 0,25; se descarta la aritmética antigua del [PDF EchoTrap, p. 12](<echotrap-next (1).pdf>).
 
 ## 11. Seguridad, privacidad y principales riesgos
 
@@ -239,7 +239,7 @@ Resemble es una alternativa documentada, no una recomendación de compra ni evid
 | Saldos ocultos o botón de pánico | No activarlos como protección predeterminada; evaluar seguridad con especialistas | Pueden aumentar el peligro si quien coacciona detecta el cambio; sin despliegue en esta demo |
 | Referencia conductual invasiva o contaminada | Agregados mínimos, consentimiento, exclusión voluntaria y reconfiguración explícita | Señales opcionales, accesibilidad y deriva; sin identificación única ni actualización silenciosa durante incidentes |
 
-La lectura estática de [calls.ts:11–30](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/calls.ts), [detections.ts:62–88](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/detections.ts) y [contenido.ts:42–96](C:/Users/dark_/Desktop/echo-trap/packages/backend/convex/contenido.ts) no muestra controles suficientes de propiedad y tamaño en acciones públicas. Es un riesgo previo que debe resolverse antes de exponer inferencia pagada, no una vulnerabilidad explotada en esta investigación.
+La lectura estática de calls.ts:11–30 (`packages/backend/convex/calls.ts`, EchoTrap), detections.ts:62–88 (`packages/backend/convex/detections.ts`, EchoTrap) y contenido.ts:42–96 (`packages/backend/convex/contenido.ts`, EchoTrap) no muestra controles suficientes de propiedad y tamaño en acciones públicas. Es un riesgo previo que debe resolverse antes de exponer inferencia pagada, no una vulnerabilidad explotada en esta investigación.
 
 El marco peruano identificado incluye Ley 29733 y DS 016-2024-JUS, pero los textos oficiales intentados devolvieron 403/418. No se ha verificado cumplimiento artículo por artículo ni se afirma conformidad. Quedan revisión legal cualificada, responsabilidades, transferencias y subencargados, uso para entrenamiento, tratamiento de voz y derechos de eliminación. Referencias oficiales de acceso limitado: [reglamento](https://www.congreso.gob.pe/Docs/DGP/DIDP/files/ds_016-2024-jus.pdf) y [normativa ANPD](https://www.gob.pe/institucion/anpd/colecciones/3482-normativa-de-proteccion-de-datos-personales), intento del 17-10-2026. No cargar datos de víctimas reales para suplir esa revisión.
 
@@ -251,7 +251,7 @@ La importación es **triaje posterior a la comunicación**, no prevención autom
 
 ## 12. Validación: criterios antes de declarar éxito
 
-No hay un RED ejecutable significativo para estos documentos pasivos: se verifican estructura y trazabilidad. Para una futura implementación autorizada, un test determinista pertinente debería observar RED → GREEN → REFACTOR. No utilizar scripts que escriben producción como suite de regresión: [test-prod.ts:8–25](C:/Users/dark_/Desktop/echo-trap/packages/backend/scripts/test-prod.ts) modifica registros; su ejecución requiere autorización separada.
+No hay un RED ejecutable significativo para estos documentos pasivos: se verifican estructura y trazabilidad. Para una futura implementación autorizada, un test determinista pertinente debería observar RED → GREEN → REFACTOR. No utilizar scripts que escriben producción como suite de regresión: test-prod.ts:8–25 (`packages/backend/scripts/test-prod.ts`, EchoTrap) modifica registros; su ejecución requiere autorización separada.
 
 | Prueba propuesta | Resultado esperado | Medición que no debe inventarse |
 |---|---|---|
@@ -275,7 +275,7 @@ Criterios de salida de la demo: enlace público accesible desde otro equipo; al 
 
 ## 13. Rúbrica y entrega: demostrar, no decorar
 
-La [rúbrica Hack the Andes, p. 1](C:/Users/dark_/Desktop/qhawix/docs/hack-the-andes-rubrica-sponsors.pdf) sitúa el evento el 17–18 de octubre de 2026 y fija el domingo 18 a las **09:00**; **America/Lima es una inferencia**, no zona impresa. Exige URL pública, código GitHub y funcionamiento en vivo; una presentación, localhost o video por sí solos no puntúan. Las [indicaciones entregadas](C:/Users/dark_/Desktop/qhawix/docs/recursos-indicaciones.txt) añaden URL de presentación y descripción.
+La [rúbrica Hack the Andes, p. 1](hack-the-andes-rubrica-sponsors.pdf) sitúa el evento el 17–18 de octubre de 2026 y fija el domingo 18 a las **09:00**; **America/Lima es una inferencia**, no zona impresa. Exige URL pública, código GitHub y funcionamiento en vivo; una presentación, localhost o video por sí solos no puntúan. Las [indicaciones entregadas](recursos-indicaciones.txt) añaden URL de presentación y descripción.
 
 | Criterio | Peso | Evidencia de la propuesta |
 |---|---|---|
@@ -287,7 +287,7 @@ La [rúbrica Hack the Andes, p. 1](C:/Users/dark_/Desktop/qhawix/docs/hack-the-a
 
 Cinco jurados puntúan de 1 a 5; se promedian ponderados y complejidad/funcionamiento desempatan. El bonus de tracción de 0,25/0,5 requiere uso externo real y evidencia según el nivel, no el premio anterior. No crear usuarios o actividad ficticios para aparentar tracción. Los créditos de sponsors anunciados no son activación comprobada ni requisito de integrarlos todos.
 
-**Contradicción pendiente:** indicaciones mencionan Track 04 Seguridad; el pie de la rúbrica dice tres tracks. Tampoco se han verificado reglas de reutilización, tamaño de equipo u obligaciones de sponsors. Debe resolverlo el organizador. El [PDF EchoTrap anterior](<C:/Users/dark_/Desktop/qhawix/docs/echotrap-next (1).pdf>) pertenece a The Next Craft/Track 02 del 29-08-2026: no gobierna esta entrega. Su propuesta de botón oculto en p. 14 queda excluida.
+**Contradicción pendiente:** indicaciones mencionan Track 04 Seguridad; el pie de la rúbrica dice tres tracks. Tampoco se han verificado reglas de reutilización, tamaño de equipo u obligaciones de sponsors. Debe resolverlo el organizador. El [PDF EchoTrap anterior](<echotrap-next (1).pdf>) pertenece a The Next Craft/Track 02 del 29-08-2026: no gobierna esta entrega. Su propuesta de botón oculto en p. 14 queda excluida.
 
 ### Secuencia relativa propuesta, solo después de autorizar implementación
 
@@ -324,7 +324,7 @@ Mensaje central propuesto: **«EchoTrap explica la comunicación; Guardian prote
 
 ## 15. Investigación reutilizable y bibliografía de control
 
-El [prompt maestro](C:/Users/dark_/Desktop/qhawix/docs/prompt-maestro-investigacion.md) permite repetir y refutar esta propuesta. Las fuentes materiales están enlazadas junto a cada afirmación; el [dossier](C:/Users/dark_/Desktop/qhawix/.research/qhawix-feasibility/FINDINGS.md) conserva bibliografía primaria, fuentes locales, fecha de consulta y bloqueos de acceso. La inspección de INEI fue textual; la revisión normativa quedó incompleta; no se inspeccionó Figma ni se verificó el premio.
+El [prompt maestro](prompt-maestro-investigacion.md) permite repetir y refutar esta propuesta. Las fuentes materiales están enlazadas junto a cada afirmación; el [dossier](../.research/qhawix-feasibility/FINDINGS.md) conserva bibliografía primaria, fuentes locales, fecha de consulta y bloqueos de acceso. La inspección de INEI fue textual; la revisión normativa quedó incompleta; no se inspeccionó Figma ni se verificó el premio.
 
 Están disponibles `research`, `research-routing` y `web-search`. Se instaló únicamente la entrada `using-superpowers`, desde el [commit upstream inspeccionado](https://github.com/obra/superpowers/tree/bb92a77741419a4ab5f06e711a283343f1ada0c3/skills/using-superpowers); no se instaló la suite de brainstorming/planes. Un router no equivale a todos sus módulos. Las clasificaciones de modelos incluidas en skills no son evidencia del rendimiento de esta investigación.
 
