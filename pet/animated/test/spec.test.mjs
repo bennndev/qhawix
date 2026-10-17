@@ -21,9 +21,7 @@ test('every declared part exists in the rig and vice versa for animated ones', (
 
 test('the committed rig is up to date with behav.svg', () => {
   // behav.svg ships with CRLF and git may rewrite line endings on checkout; compare content only.
-  const lf = (text) => text.replace(/
-/g, '
-');
+  const lf = (text) => text.split(String.fromCharCode(13)).join('');
   assert.equal(lf(readFileSync(TARGET, 'utf8')), lf(buildRig(readFileSync(SOURCE, 'utf8'))));
 });
 
