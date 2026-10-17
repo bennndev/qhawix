@@ -20,7 +20,11 @@ test('every declared part exists in the rig and vice versa for animated ones', (
 });
 
 test('the committed rig is up to date with behav.svg', () => {
-  assert.equal(readFileSync(TARGET, 'utf8'), buildRig(readFileSync(SOURCE, 'utf8')));
+  // behav.svg ships with CRLF and git may rewrite line endings on checkout; compare content only.
+  const lf = (text) => text.replace(/
+/g, '
+');
+  assert.equal(lf(readFileSync(TARGET, 'utf8')), lf(buildRig(readFileSync(SOURCE, 'utf8'))));
 });
 
 test('validator rejects broken specs', () => {
