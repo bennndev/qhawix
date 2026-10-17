@@ -1,0 +1,88 @@
+Aquí tienes la transcripción completa organizada en texto plano:
+
+**QUÉ TE DAN PARA BUSCAR**
+
+* **TAVILY**: 8.000 créditos por participante. Para que tu agente busque en la web y lea las páginas.
+
+
+* **EXA**: USD 50 en la Search API. Para encontrar páginas y documentos por significado.
+
+
+* **APIFY**: USD 100 en créditos. Para extraer datos de sitios con scrapers listos.
+
+
+* **MARITIME**: USD 100 en maritime.sh. Para alojar agentes que conservan su máquina y sus archivos.
+
+
+
+---
+
+**QUÉ TE DAN PARA CONSTRUIR**
+
+* **N8N**: 1 mes Cloud Pro para cada participante. Para conectar APIs y dejar flujos corriendo.
+
+
+* **LOVABLE**: Plan Pro. Para describir una app y tenerla funcionando en la web.
+
+
+* **ZAVU**: 3 meses. Una API para WhatsApp, SMS, email y voz. Dudas en Discord: viktorpy, jullietv y calmizir.
+
+
+
+---
+
+**QUÉ TE DAN PARA SEGUIR**
+
+* **QATON**: 6 meses Plan Max para cada participante. Agentes y transacciones sin límite, hasta 1.000 ítems en el catálogo. USD 1.800 en total.
+
+
+* **ATOMICMEMORY**: 5 meses Plan Pro para cada participante. Memoria persistente para que tu agente recuerde entre conversaciones. USD 95 en total.
+
+
+
+---
+
+**TRACK 04: SEGURIDAD**
+
+* Extorsión a comercios y transportistas.
+
+
+* Estafas, suplantación y voces clonadas.
+
+
+* Desinformación y noticias falsas.
+
+
+
+---
+
+**ENTREGA DEL PROYECTO**
+
+**ANDES PROJECT SUBMIT:**
+
+* URL desplegada y pública
+
+
+* Repo de GitHub con el código
+
+
+* URL de la presentación
+
+
+* Descripción del proyecto
+
+
+
+**NO CUENTA:**
+
+* Correr en localhost
+
+
+* Solo slides o un pitch
+
+
+* Mockups o video grabado
+
+
+
+**HORA LÍMITE:** Domingo 18 a las 09:00. Se evalúa una demo en vivo desde tus links.

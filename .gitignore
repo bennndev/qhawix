@@ -4,3 +4,7 @@
 # Personal agent settings
 .claude/settings.local.json
 CLAUDE.local.md
+
+# Private research and generated CodeGraph index
+.research/
+.codegraph/
