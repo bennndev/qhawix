@@ -15,11 +15,16 @@ and the repo skills (`install-skill`, `research`, `research-routing`, `web-searc
 ## What the SVG allows
 
 `behav.svg` is an Illustrator export, 2000x2000. The visible layer `Capa_1` is one merged compound
-path (frame, sockets, cheeks and beak are cut-outs of the same path) plus two eye rings. The hidden
-layer `Capa_2` holds the same drawing as separate stroked parts: two brow pieces (tuft + socket),
-beak, two eyes, body outline, forehead arc, two cheeks and spine. That layer is what gets rigged:
-eyes (gaze, blink), brows (raise/furrow), beak, the whole body (breathing, squash and stretch, tilt)
-and overlays (thought dots, gears, check mark, sparks).
+path (the first subpath is the outer outline, the other seven are the white regions: sockets, forehead,
+cheeks, chest, beak) plus two eye rings. The hidden layer `Capa_2` holds a stroked drawing split into
+parts, but it is an earlier, misaligned draft: measured against the visible layer its silhouette has
+IoU 0.894 (the right side bulges about 30 units and the eyes sit about 25 units higher). The first
+prototype rigged `Capa_2`; once the owl was coloured in, that deviation was not acceptable, so the rig is
+now built from `Capa_1` (IoU 1.000 against the original).
+
+From `Capa_1` the animatable pieces are: the two eye rings (gaze, blink, happy swap), the ear tufts
+(cut from the outline and rotated at their base), the whole body (breathing, squash and stretch,
+tilt) and overlays (thought dots, gears, check mark, sparks). The beak, cheeks and lines stay static.
 
 ## Options compared
 
@@ -46,10 +51,11 @@ part names in the spec map directly to Rive objects.
 
 ## What was and was not verified
 
-- Verified here: the rig renders like the original (visual comparison), all four states animate
-  (contact sheet), and the engine passes 7 tests (spec contract, rig freshness, and 16 real-browser
-  checks including real-time auto-return, events and reduced motion). The browser test fails when
-  auto-return is deliberately broken (mutation check).
+- Verified here: the idle silhouette equals the original outline (flood-filled pixel comparison, run as a
+  test; it fails when the ear cut-outs are deliberately broken), all four states animate (contact sheet),
+  the six themes recolour the same shape, and the engine passes 7 tests (spec contract, rig freshness and
+  19 real-browser checks including real-time auto-return, events, reduced motion, themes and the
+  silhouette). The browser test also fails when auto-return is deliberately broken (mutation check).
 - Not verified: Rive and Lottie were assessed from their documentation and package listings, not by
   building the mascot in them. Rive's MCP was not installed or run. Firefox, Safari and real devices
   were not tested.

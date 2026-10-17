@@ -1,7 +1,9 @@
 # Animated owl mascot
 
-A framework-free animation rig for the owl in [`../behav.svg`](../behav.svg), with four states:
-`idle`, `thinking`, `working` and `success`.
+A framework-free animation rig for the owl in [`../behav.svg`](../behav.svg), with four states
+(`idle`, `thinking`, `working`, `success`) and six colour themes. The owl keeps the exact outline of the
+original artwork; only the colouring changes (flat body colour, white lines and eyes, like the reference
+bots in `../reference/palette.jpg`).
 
 ![contact sheet](docs/contact-sheet.png)
 
@@ -27,8 +29,9 @@ It is auto-detected; set `BROWSER=<path>` to override. Without one, the browser 
 | Path | Role | Depends on |
 | --- | --- | --- |
 | `../behav.svg` | Original artwork. Never modified. | - |
-| `scripts/build-rig.mjs` | Derives the rig from the original's hidden `Capa_2` layer. | Node |
-| `assets/mascot.svg` | Generated rig: one `data-part="..."` element per body part. | - |
+| `scripts/build-rig.mjs` | Derives the rig from the original's visible layer `Capa_1` (same geometry). | Node |
+| `assets/mascot.svg` | Generated rig: `data-part="..."` elements for every animated piece. | - |
+| `src/mascot.themes.json` | The six body colours sampled from the reference image. | - |
 | `src/mascot.spec.json` | **All animation data**: parts, rest poses, states, keyframes. | - |
 | `src/mascot-engine.js` | Plays the spec on any SVG that has the parts. | Web Animations API |
 | `demo/` | Demo page, contact sheet and the browser self test. | engine |
@@ -49,6 +52,18 @@ Options: `speed` (playback multiplier), `blendMs` (cross-state blend, default 22
 `pause()`, `play()` and `seek(ms)` exist for deterministic tests and screenshots.
 
 `success` is a one-shot: it plays once and returns to `idle` on its own (`"next"` in the spec).
+
+## Colour themes
+
+The colours are CSS variables, so a theme is just a style on the element that contains the SVG:
+
+```js
+stage.style.setProperty('--mascot-body', '#9259FE');  // body colour (see src/mascot.themes.json)
+stage.style.setProperty('--mascot-line', '#fff');     // optional: lines and eyes, white by default
+```
+
+The demo has a swatch picker. Themes: teal `#00BBA6`, orange `#FF9702`, purple `#9259FE`, red `#FD253A`,
+blue `#1183FF`, pink `#FF309C`.
 
 ## Spec format
 
@@ -72,10 +87,14 @@ To tweak motion, edit the JSON and run `npm run sheet` to see the result.
 ## Known limits
 
 - Tested only in Chromium/Edge. Firefox and Safari are not tested.
-- The rig is built from `Capa_2`, the original's hidden stroke layer, because the visible layer is a
-  single merged path that cannot be split without breaking its cut-outs. The two layers are close but
-  not identical (the eye ring radius is set to 66 to match the visible layer): near-identical, not
-  pixel-identical.
+- The outline is the original's, pixel for pixel (a test compares the idle silhouette with `behav.svg`,
+  IoU >= 0.998). The white lines are the original lines slimmed by 18 units (`THIN` in `build-rig.mjs`),
+  and the original outer band is body-coloured so the silhouette does not shrink.
+- The visible artwork is one merged path, so only these pieces move on their own: the two eye rings,
+  the two ear tufts (rotating at their base) and the whole body. The beak, cheeks and lines are static;
+  the lines are drawn through an SVG `mask`, which a Kotlin port has to replicate.
+- The ear tufts are cut from the outline with hand-placed polygons (`TUFT_CORE`/`TUFT_PIECE`); keep their
+  rotations small (about 10 degrees or less) or the cut edge at the base becomes visible.
 - One track per part per state: independent x/y timing on the same part needs a nested group.
 - In headless Chromium with `--virtual-time-budget`, transform animations never start and
   `Animation.finished` never resolves (no frames are produced); the test runner therefore drives the
