@@ -32,17 +32,6 @@ android {
         manifestPlaceholders["appName"] = "QHAWIX"
     }
 
-    // Side-by-side local build for testing the integrated call flow.
-    // The existing QHAWIX app and the earlier preview remain installable.
-    flavorDimensions += "edition"
-    productFlavors {
-        create("localTest") {
-            dimension = "edition"
-            applicationIdSuffix = ".localtest"
-            manifestPlaceholders["appName"] = "QHAWIX Local"
-        }
-    }
-
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
