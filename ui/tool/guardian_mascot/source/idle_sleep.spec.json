@@ -1,0 +1,180 @@
+{
+  "comment": "Intentional overrides of states in mascot.spec.json (never edit that copy; it stays byte-identical to main). Applied by the generator over the base states, keeping their order. Offsets are milliseconds / 16800 for idle.",
+  "rigExtras": [
+    {
+      "layer": "front",
+      "part": "z1",
+      "elements": [
+        {"path": "M1600,400H1668L1600,480H1668", "stroke": "body", "strokeWidth": 22}
+      ]
+    },
+    {
+      "layer": "front",
+      "part": "z2",
+      "elements": [
+        {"path": "M1600,400H1668L1600,480H1668", "stroke": "body", "strokeWidth": 22}
+      ]
+    },
+    {
+      "layer": "front",
+      "part": "z3",
+      "elements": [
+        {"path": "M1600,400H1668L1600,480H1668", "stroke": "body", "strokeWidth": 22}
+      ]
+    }
+  ],
+  "parts": {
+    "z1": {
+      "origin": [
+        0.5,
+        0.5
+      ],
+      "rest": {"o": 0}
+    },
+    "z2": {
+      "origin": [
+        0.5,
+        0.5
+      ],
+      "rest": {"o": 0}
+    },
+    "z3": {
+      "origin": [
+        0.5,
+        0.5
+      ],
+      "rest": {"o": 0}
+    }
+  },
+  "overrides": {
+    "idle": {
+      "intent": "OWNER-REQUESTED DEVIATION from pet/animated (the Node idle is a calm, awake owl). Rest is a light sleeper: eyes closed (the rig's blink pose, held), head slightly drooped, slow breathing every 5.6 s. Every 8.4 s (cycle 16.8 s = 3 breaths) it reacts to an imagined sound without waking: anticipation dip, the body turns 6 degrees with a small lift, one tuft perks (8.5 degrees max) and the eye on that side cracks open, brief hold, soft settle with overshoot. The side alternates: first right (t=4.6 s), then left (t=13.0 s). Three faint 'z' marks drift up over 3.4 s each. Blend in 500 ms (falling asleep) and out 400 ms (waking). Reduced motion freezes at pose 0: eyes closed, head neutral, no 'z'.",
+      "loop": true,
+      "pose": 0,
+      "blendMs": 500,
+      "exitBlendMs": 400,
+      "tracks": [
+        {
+          "part": "root",
+          "duration": 16800,
+          "keyframes": [
+            {"offset": 0.0, "y": 6, "sx": 1.004, "sy": 0.99, "r": 0},
+            {"offset": 0.166667, "y": -1, "sx": 0.996, "sy": 1.014},
+            {"offset": 0.261905, "y": 3.5, "sx": 1, "sy": 1},
+            {"offset": 0.285714, "ease": "ease-out", "y": 7, "sx": 1.006, "sy": 0.985, "r": -1.2},
+            {"offset": 0.327381, "y": -3, "sx": 0.997, "sy": 1.012, "r": 6},
+            {"offset": 0.35119, "y": -2, "sx": 0.998, "sy": 1.009, "r": 4.8},
+            {"offset": 0.39881, "y": -2, "sx": 0.998, "sy": 1.009, "r": 5},
+            {"offset": 0.458333, "y": 5, "sx": 1.003, "sy": 0.992, "r": -0.5},
+            {"offset": 0.488095, "y": 3, "sx": 1, "sy": 1, "r": 0},
+            {"offset": 0.52381, "y": -1, "sx": 0.996, "sy": 1.014, "r": 0},
+            {"offset": 0.666667, "y": 6, "sx": 1.004, "sy": 0.99, "r": 0},
+            {"offset": 0.755952, "y": 3.5, "sx": 1, "sy": 1, "r": 0},
+            {"offset": 0.785714, "ease": "ease-out", "y": 7, "sx": 1.006, "sy": 0.985, "r": 1.2},
+            {"offset": 0.827381, "y": -3, "sx": 0.997, "sy": 1.012, "r": -6},
+            {"offset": 0.85119, "y": -2, "sx": 0.998, "sy": 1.009, "r": -4.8},
+            {"offset": 0.89881, "y": -2, "sx": 0.998, "sy": 1.009, "r": -5},
+            {"offset": 0.958333, "y": 5, "sx": 1.003, "sy": 0.992, "r": 0.5},
+            {"offset": 0.982143, "y": 3.5, "sx": 1, "sy": 1, "r": 0},
+            {"offset": 1.0, "y": 6, "sx": 1.004, "sy": 0.99, "r": 0}
+          ]
+        },
+        {
+          "part": "eyeL",
+          "duration": 16800,
+          "keyframes": [
+            {"offset": 0.0, "y": 4, "sy": 0.08},
+            {"offset": 0.815476, "y": 4, "sy": 0.08},
+            {"offset": 0.845238, "y": 2.5, "sy": 0.32},
+            {"offset": 0.892857, "y": 2.5, "sy": 0.32},
+            {"offset": 0.922619, "y": 4, "sy": 0.08},
+            {"offset": 1.0, "y": 4, "sy": 0.08}
+          ]
+        },
+        {
+          "part": "eyeR",
+          "duration": 16800,
+          "keyframes": [
+            {"offset": 0.0, "y": 4, "sy": 0.08},
+            {"offset": 0.309524, "y": 4, "sy": 0.08},
+            {"offset": 0.339286, "y": 2.5, "sy": 0.32},
+            {"offset": 0.392857, "y": 2.5, "sy": 0.32},
+            {"offset": 0.422619, "y": 4, "sy": 0.08},
+            {"offset": 1.0, "y": 4, "sy": 0.08}
+          ]
+        },
+        {
+          "part": "browL",
+          "duration": 16800,
+          "keyframes": [
+            {"offset": 0.0, "r": 2.5, "y": 1.5},
+            {"offset": 0.285714, "r": 2.5, "y": 1.5},
+            {"offset": 0.333333, "r": 4.8, "y": 1},
+            {"offset": 0.375, "r": 2.5, "y": 1.5},
+            {"offset": 0.77381, "r": 2.5, "y": 1.5},
+            {"offset": 0.785714, "r": 4.5, "y": 2.5},
+            {"offset": 0.827381, "r": -8.5, "y": -4},
+            {"offset": 0.85119, "r": -7, "y": -3},
+            {"offset": 0.910714, "r": -7, "y": -3},
+            {"offset": 0.946429, "r": 3.8, "y": 2},
+            {"offset": 0.97619, "r": 2.5, "y": 1.5},
+            {"offset": 1.0, "r": 2.5, "y": 1.5}
+          ]
+        },
+        {
+          "part": "browR",
+          "duration": 16800,
+          "keyframes": [
+            {"offset": 0.0, "r": -2.5, "y": 1.5},
+            {"offset": 0.285714, "r": -2.5, "y": 1.5},
+            {"offset": 0.297619, "r": -4.5, "y": 2.5},
+            {"offset": 0.327381, "r": 8.5, "y": -4},
+            {"offset": 0.35119, "r": 7, "y": -3},
+            {"offset": 0.410714, "r": 7, "y": -3},
+            {"offset": 0.446429, "r": -3.8, "y": 2},
+            {"offset": 0.47619, "r": -2.5, "y": 1.5},
+            {"offset": 0.785714, "r": -2.5, "y": 1.5},
+            {"offset": 0.827381, "r": -5.5, "y": 2},
+            {"offset": 0.869048, "r": -2.5, "y": 1.5},
+            {"offset": 1.0, "r": -2.5, "y": 1.5}
+          ]
+        },
+        {
+          "part": "z1",
+          "duration": 5600,
+          "easing": "linear",
+          "keyframes": [
+            {"offset": 0, "s": 0.6, "o": 0, "x": 0, "y": 0},
+            {"offset": 0.12, "s": 0.68, "o": 0.35, "x": 4, "y": -18},
+            {"offset": 0.6, "s": 1, "o": 0, "x": 25, "y": -150},
+            {"offset": 1, "s": 1, "o": 0, "x": 25, "y": -150}
+          ]
+        },
+        {
+          "part": "z2",
+          "duration": 5600,
+          "easing": "linear",
+          "keyframes": [
+            {"offset": 0, "s": 0.6, "o": 0, "x": 0, "y": 0},
+            {"offset": 0.15, "s": 0.6, "o": 0, "x": 0, "y": 0},
+            {"offset": 0.27, "s": 0.68, "o": 0.35, "x": 4, "y": -18},
+            {"offset": 0.75, "s": 1, "o": 0, "x": 25, "y": -150},
+            {"offset": 1, "s": 1, "o": 0, "x": 25, "y": -150}
+          ]
+        },
+        {
+          "part": "z3",
+          "duration": 5600,
+          "easing": "linear",
+          "keyframes": [
+            {"offset": 0, "s": 0.6, "o": 0, "x": 0, "y": 0},
+            {"offset": 0.3, "s": 0.6, "o": 0, "x": 0, "y": 0},
+            {"offset": 0.42, "s": 0.68, "o": 0.35, "x": 4, "y": -18},
+            {"offset": 0.9, "s": 1, "o": 0, "x": 25, "y": -150},
+            {"offset": 1, "s": 1, "o": 0, "x": 25, "y": -150}
+          ]
+        }
+      ]
+    }
+  }
+}

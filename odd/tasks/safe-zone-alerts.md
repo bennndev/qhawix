@@ -1,0 +1,76 @@
+# Safe-zone alerts: handoff (finish the feature or declare it failed)
+
+Objective: when the person is away from home during a configured window, the phone sends an SMS to their circle **by itself, in the background, even with the app closed**, all in Flutter with pub.dev packages (no custom Kotlin). Decide with device evidence whether this works; build it if it does, declare it failed with evidence if it does not.
+Branch: `feature/ui` (not pushed). Test runner: `cd ui && dart analyze && flutter test` (baseline 420 passing, analyze clean). Delivery: commit each finished unit, never push without asking.
+You are continuing work started in Claude Code, which ran out of tokens. Everything you need is in this file, `AGENTS.md`, `README.md`, `DESIGN.md`, `spikes/safe_zone/RESULTS.md` and `contracts/safe-zone-channel.md`. Read them before acting.
+
+## Specs (owner requirements; quote them, do not reinterpret)
+- S1. "Todos esos parametros el usuario lo tendría que configurar en el OnBoarding, que de los permisos necesarios y parametrizar cuantos metros lejos de casa que empiece a alertar o desde pasado que hora del día sea una anomalia, para así automaticamente en segundo plano enviar SMS a mi circulo seguro."
+- S2. Both conditions (far from home **and** past the hour) by default, or the user can configure it. Implemented as two modes: `awayDuringWindow` (default) and `awayAnytime`. There is no "time only" mode (it would alert every night at home).
+- S3. "todo debía usar Flutter": no custom Kotlin or native code in this repository. Plugins from pub.dev are fine; editing `AndroidManifest.xml` and Gradle files is accepted.
+- S4. A trusted contact needs no app and no invitation ("mi mamá podría ser mi contacto de confianza y no tener instalada la aplicación"). Contacts without the app receive SMS or WhatsApp only, composed on the person's own phone; QHAWIX servers never message people who did not install the app.
+- S5. Nothing is simulated. Tests send real SMS and say so. Mock repositories exist only behind an example-data banner.
+- S6. Cancellable countdown before sending (PIN to cancel, not fingerprint: a fingerprint can be forced), neutral notification text, one alert per away episode, daily limit, automatic suffix in the SMS saying it is automatic.
+- S7. UI copy in neutral Spanish, sentence case; code, comments and commit messages in English. 48 dp targets, 200% text scale, `DESIGN.md` tokens, no mascot on risk, gate or error screens.
+
+## Current state
+Done and committed on `feature/ui` (12 commits ahead of `origin/feature/development`):
+- `DESIGN.md` visual system; Flutter theme, bundled fonts (DM Sans, Inter), shared widgets in `ui/lib/core/`; the Guardian de Comportamiento mascot (8 states); module entry stubs; Trust Circle screens with a mock repository and the contact rules of S4.
+- `ui/lib/features/refuge/`: the safe-zone **onboarding wizard (7 steps)**, the **hub screen** (`RefugeScreen`, status, permission health, history, test actions), domain (`SafeZoneConfig`, `AlertWindow.inWindow`, `SafeZoneStatus`, events, errors), the port `SafeZonePlatform` (one method per contract method), the view models, a fake platform used **only in tests**, and `TrustCircleRecipientSource` (reads active contacts from the Trust Circle repository, still its mock). Runnable entry: `ui/lib/dev/safe_zone_demo_main.dart`.
+- `ui/lib/features/refuge/data/method_channel_safe_zone_platform.dart` is a **placeholder** that targets an Android MethodChannel that no longer exists (the Kotlin engine was dropped by S3). It must be replaced by an adapter over packages. `contracts/safe-zone-channel.md` keeps the behavior (config, rule semantics, method names, events, limits); its transport sections are obsolete.
+- `spikes/safe_zone/`: a standalone Flutter project (`pe.qhawix.spike`) that tests the packages on the real phone. Results in `spikes/safe_zone/RESULTS.md` (read it fully).
+Not built: the package-based adapter, the background rule engine in Dart, the countdown + PIN screen, the "allow auto-start" onboarding step, the Gradle and manifest changes in `ui/android/`, and the safe-zone entry in the app shell.
+
+## Evidence from the device spike (phone: HONOR RMO-NX3, MagicOS 7.1, Android 13)
+- Packages verified (versions, licenses all permissive): `native_geofence` 1.3.1, `another_telephony` 0.4.1, `geolocator` 14.1.1, `android_alarm_manager_plus` 5.1.2, `flutter_local_notifications` 22.3.2, `permission_handler` 13.0.2 with `permission_handler_android` pinned to 13.0.1, `flutter_native_contact_picker` 0.0.12, `path_provider` 2.1.6. Not yet used in the spike but planned: `flutter_secure_storage` 11.2.0, `cryptography` 2.9.0. The owner approved adding these packages (the 9 above plus `path_provider` if needed).
+- **Passed:** SMS from the UI isolate with `SENT` and `DELIVERED`; one SMS from an alarm callback with the process killed (alarm at 20:42, `SENT` and `DELIVERED`); one-shot location from the alarm isolate; geofence registration and the ENTER callback 1.1 s after registering; the contact picker declares and holds no contacts permission.
+- **Blocked:** after the first alarm following a fresh install, every later alarm fired at the OS level but the Honor startup-by-broadcast manager did not start the killed process (logcat: `HwMtmBroadcastResourceManager ... not process`, no `Start proc ... for broadcast`). Not the standby bucket, not Doze, not battery optimization. Best explanation, unverified: auto-launch must be allowed for the app. Geofence events travel by the same kind of broadcast, so dead-process geofence delivery is at the same risk and is **not proven**.
+- **Not tested:** geofence EXIT with the process dead; reboot (`adb reboot` was not allowed; `native_geofence` and alarm manager do not handle `LOCKED_BOOT_COMPLETED`, so re-registration waits for the first unlock); the notification Cancel action and the PIN screen over a locked phone; the in-app permission dialogs; Android 15 restricted-settings behavior for a sideload not installed through adb.
+- Android limit confirmed on the device: `am force-stop` removes the app's alarms until the person opens it again (and geofences too, by Android's design). It must be documented to the person.
+- 3 real SMS were sent to the owner's second phone (cap was 6).
+
+## Your task
+Do these in order and stop at the decision.
+1. **Owner action first.** Ask the owner (in your pane) to open the phone's Settings > Apps > App launch, find the spike app (`safe_zone_spike`), switch to manual management and enable auto-launch, secondary launch and run in background. Do not skip this: it is the leading hypothesis for the block.
+2. **Repeat the device tests** with the spike (build and install with `flutter run -d AWYRVB3A27001174 --dart-define-from-file=spike.local.json` from `spikes/safe_zone/`): Q1 five alarms in a row with the process dead (press HOME, then `adb shell am kill pe.qhawix.spike`, never `force-stop` for this test); Q2 the **physical geofence exit** (the owner walks more than about 150 m from the registered point with the app closed; log timestamps measure the delay; three attempts); Q4 the countdown and PIN over a locked phone; Q3 reboot **only if the owner agrees** to `adb reboot`, and then unlock once. Update `spikes/safe_zone/RESULTS.md` with the evidence.
+3. **Decide and write the verdict** at the top of `RESULTS.md`: **GO** if five consecutive killed-process alarms fire and the geofence exit produced an SMS in at least 2 of 3 walks within 10 minutes; **GO WITH CHANGES** if it only works after the person allows auto-launch (then the product needs a guided step, per manufacturer, and the gap must be stated honestly); **FAILED** otherwise. If FAILED: write the evidence, say which question forced it, recommend the fallback (the paid `flutter_background_geolocation` 5.9.0, which requires a license for release builds, or custom native code which the owner currently rejects) and **stop**; do not build the adapter. Report the verdict to the owner.
+4. **If GO or GO WITH CHANGES, implement** in `ui/`:
+   - `PackagesSafeZonePlatform` in `ui/lib/features/refuge/data/` implementing `SafeZonePlatform` over the packages (mapping in `contracts/safe-zone-channel.md` last section is outdated; use this one: permissions `permission_handler`; `currentLocation` `geolocator`; `pickContact` `flutter_native_contact_picker`; zone `native_geofence`; window-open alarm `android_alarm_manager_plus` with `rescheduleOnReboot`; SMS `another_telephony`; countdown notification `flutter_local_notifications`; PIN hash `cryptography` (PBKDF2) plus `flutter_secure_storage`; event log as an appended **plain file** read by every isolate, because `SharedPreferences` caches per isolate and shows stale values to background callbacks).
+   - The rule engine in pure Dart with an injected `Clock` (episode state machine, `inWindow`, `minAwayMinutes` confirmation with a one-shot location, one alert per away episode, daily limit, `awayDuringWindow` and `awayAnytime`) with heavy unit tests; background entry points are top-level functions with `@pragma('vm:entry-point')`.
+   - The countdown with the neutral notification, a Cancel action that opens a Flutter PIN screen route (works cold and warm), and the fixed automatic suffix on the SMS.
+   - A new onboarding step "Permitir inicio automático" with plain Spanish guidance per manufacturer (at least Honor/Huawei, Xiaomi, Samsung, a generic fallback), shown before monitoring can start, and a health row for it on the hub (it cannot be read from the system, so ask the person to confirm and say so).
+   - Gradle and manifest: copy what the spike proved (`spikes/safe_zone/android/app/src/main/AndroidManifest.xml`, `build.gradle.kts`): `dependency_overrides: permission_handler_android: 13.0.1`, core library desugaring, minSdk 23, receivers and services of `native_geofence` and the alarm plugin, permissions listed in `contracts/safe-zone-channel.md`.
+   - Make the Refuge providers use the real adapter on Android by default; the fake stays in tests only. Fix the `MultilinePasteField` overflow at 200% text scale when `maxLength` is set (a known core-widget bug; the message field currently uses a plain `TextField`).
+   - Update `AGENTS.md` (permissions policy table: SMS, background location, exact alarms, notifications, battery optimization, contact picker; the spike results; the open spikes) and `README.md`, and replace the obsolete parts of `contracts/safe-zone-channel.md`.
+5. Verify on the phone (`flutter run -d AWYRVB3A27001174 -t lib/dev/safe_zone_demo_main.dart`): onboarding, permissions, a test SMS, the end-to-end test, status after killing the app. Run `dart analyze` and `flutter test`.
+6. Commit each finished unit with Conventional Commits, **no AI attribution lines and no Co-Authored-By**, on `feature/ui`. Do not push; ask first.
+
+## Hard rules
+- Never write or print the recipient's phone number anywhere versioned or in logs you keep. It lives only in `spikes/safe_zone/spike.local.json` (gitignored). SMS cap: at most 6 more real SMS in total, every text starting with `Prueba QHAWIX:`, and count them.
+- No custom Kotlin; no accessibility service; no `READ_CONTACTS`, `READ_SMS`, `READ_PHONE_STATE`; no new dependency beyond those listed without asking; no secrets in the repo.
+- Do not touch `lovable/` (an untracked project connected to an external editor), the original files in `docs/`, or `.atl/`. Do not use force-push or rewrite history.
+- Never reboot, force-stop other apps, or change the phone's settings beyond the spike app without the owner's consent. Test on the spike app, not on the owner's other apps.
+- Source rules enforced by tests: no numeric `Duration` literals under `ui/lib/`, no `Color(0x...)` or `TextStyle(fontSize: ...)` outside `core/theme/` and the mascot folder.
+- Honest limits everywhere: events can take minutes, the phone maker may stop the app, `sent` is not `delivered`, force-stop disables everything, SIM balance is needed.
+
+## Environment
+Windows 11, Git Bash. Flutter 3.41.6 (Dart 3.11.4). Phone serial `AWYRVB3A27001174` (Honor RMO-NX3, Android 13, dual SIM, slot 1 out of service). `adb` is at `C:/Users/benja/AppData/Local/Android/Sdk/platform-tools/adb.exe` (not in PATH). Pull the spike log with `adb shell run-as pe.qhawix.spike cat files/spike_log.txt`. A first Gradle build takes 3 to 6 minutes; the SDK-XML-version warning is harmless. Entries to run on the phone: `ui/lib/dev/safe_zone_demo_main.dart`, `ui/lib/dev/trust_circle_demo_main.dart`, `ui/lib/dev/guardian_mascot_demo_main.dart`. `agent` in PATH is not Cursor's.
+
+## Open decisions (do not resolve silently; ask the owner)
+Deep teal `#0B5D6B` as the accent; whether the AURA module keeps its name next to the Guardian de Comportamiento mascot; the discreet label of the "Refugio" tab; whether `stealth` may appear on Inicio; the Android package id `pe.qhawix.qhawix` (provisional); the `supabase_flutter` dependency (kept for later accounts); Google Play distribution (the SMS and background-location permissions are restricted there; today the APK is sideloaded).
+
+## Implementation tasks (after GO WITH CHANGES)
+- [x] T1 (S1–S3, S6): pure Dart rule engine + unit tests — inline
+- [x] T2 (S1, S3, S5): `PackagesSafeZonePlatform`, file store, background entry points — inline
+- [x] T3 (S1, S7): Android manifest/Gradle, auto-start onboarding step, wire providers — inline
+- [ ] T4: device verify on Honor + analyze/test + work-unit commits — inline
+
+## Log
+- L1 (2026-10-17): the owner asked that the user configure in the onboarding the permissions, the distance from home and the hour from which being away is an anomaly, to send SMS automatically in the background to the safe circle (S1).
+- L2: "Cuando se cumplen ambas, o que el usuario lo pueda configurar, me parece bien toda la implementación. ¿Podrías implementarlo?" (S2).
+- L3: after seeing that a Kotlin engine had been planned: "Frenalo, todo debía usar Flutter, mal ahí." (S3). The Kotlin agent had written nothing.
+- L4: "Prueba para ver si las librerias pueden lograr lo que queremos" (the spike). The phone was authorized and the recipient number supplied by the owner.
+- L5: the owner moved to Cursor because Claude tokens ran out: "quiero usarlo en Cursor para que termine de implementar la feature o la determine como fallida".
+- L6 (2026-10-17 evening): owner enabled Honor App launch (auto-launch, secondary, background). Five consecutive killed-process Q7 alarms passed. Owner could not leave the building; Q2 done with adb mock GPS — 3/3 exits with real SMS SENT/DELIVERED, process dead. Verdict: **GO WITH CHANGES** (guided auto-start required; physical walk still a follow-up). SMS cap 6/6 reached. Q3/Q4 still untested.
+- L7 (2026-10-17): owner: "Empieza con la implementación, el teléfono está conectado." Spike phase closed; building package adapter.
+- L8 (2026-10-17): Implemented `SafeZoneEngine`, `SafeZoneFileStore`, `PackagesSafeZonePlatform`, background geofence/alarm callbacks, Android manifest/Gradle (desugar, minSdk 23), onboarding step "Permitir inicio automático". Refuge tests 93 passed. Device verify pending.

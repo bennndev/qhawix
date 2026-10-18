@@ -1,0 +1,283 @@
+{
+  "comment": "Guardian de Comportamiento: the four states the Node rig does not have, plus the extra parts they use. Same format as mascot.spec.json (x/y in SVG units, r in degrees, s/sx/sy scale, o opacity, d stroke draw). Extra fields: 'hold' (one-shot that stays on its last pose), 'blendMs'/'exitBlendMs' (per-state blend). Extra shapes use the body colour only (the line colour is invisible on the canvas) and sit behind the owl ('back') or in front ('front'). Every loop is calmer than 'working' (shortest cycle 520 ms); the fastest new motion is the 170 ms swing of 'alert', a one-shot.",
+  "rigExtras": [
+    {
+      "layer": "back",
+      "part": "ringA",
+      "elements": [{ "circle": [1018, 1000, 700], "stroke": "body", "strokeWidth": 16 }]
+    },
+    {
+      "layer": "back",
+      "part": "ringB",
+      "elements": [{ "circle": [1018, 1000, 700], "stroke": "body", "strokeWidth": 16 }]
+    },
+    {
+      "layer": "back",
+      "part": "halo",
+      "elements": [{ "circle": [1018, 1000, 870], "stroke": "body", "strokeWidth": 14, "dash": [70.08, 70.08] }]
+    },
+    {
+      "layer": "front",
+      "part": "bang",
+      "elements": [
+        { "path": "M1790,150V300", "stroke": "body", "strokeWidth": 46.6006 },
+        { "circle": [1790, 385, 28], "fill": "body" }
+      ]
+    }
+  ],
+  "parts": {
+    "ringA": { "origin": [0.5, 0.5], "rest": { "o": 0 } },
+    "ringB": { "origin": [0.5, 0.5], "rest": { "o": 0 } },
+    "halo": { "origin": [0.5, 0.5], "rest": { "o": 0 } },
+    "bang": { "origin": [0.5, 0.5], "rest": { "o": 0 } }
+  },
+  "states": {
+    "listening": {
+      "intent": "Attentive: eyes a little wider, faster gentle breathe with a tiny lean toward the sound, two soft rings that expand and fade. Trigger: the voice detector is listening.",
+      "loop": true,
+      "pose": 0,
+      "tracks": [
+        {
+          "part": "root",
+          "duration": 3000,
+          "keyframes": [
+            { "offset": 0, "r": -1.5 },
+            { "offset": 0.14, "y": 3, "sx": 1.006, "sy": 0.988, "r": -1.5 },
+            { "offset": 0.55, "y": -7, "sx": 0.996, "sy": 1.014, "r": -2.4 },
+            { "offset": 1, "r": -1.5 }
+          ]
+        },
+        {
+          "part": "eyeL",
+          "duration": 4800,
+          "keyframes": [
+            { "offset": 0, "x": 0, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.3, "x": 5, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.52, "x": 5, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.66, "x": -4, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.89, "x": -4, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.91, "x": -4, "y": 4, "sx": 1.07, "sy": 0.1 },
+            { "offset": 0.935, "x": -4, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 1, "x": 0, "y": -2, "sx": 1.07, "sy": 1.1 }
+          ]
+        },
+        {
+          "part": "eyeR",
+          "duration": 4800,
+          "keyframes": [
+            { "offset": 0, "x": 0, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.3, "x": 5, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.52, "x": 5, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.66, "x": -4, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.89, "x": -4, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 0.91, "x": -4, "y": 4, "sx": 1.07, "sy": 0.1 },
+            { "offset": 0.935, "x": -4, "y": -2, "sx": 1.07, "sy": 1.1 },
+            { "offset": 1, "x": 0, "y": -2, "sx": 1.07, "sy": 1.1 }
+          ]
+        },
+        {
+          "part": "browL",
+          "duration": 2600,
+          "keyframes": [
+            { "offset": 0, "r": -4, "y": -2 },
+            { "offset": 0.5, "r": -5.5, "y": -3 },
+            { "offset": 1, "r": -4, "y": -2 }
+          ]
+        },
+        {
+          "part": "browR",
+          "duration": 2600,
+          "keyframes": [
+            { "offset": 0, "r": 4, "y": -2 },
+            { "offset": 0.5, "r": 5.5, "y": -3 },
+            { "offset": 1, "r": 4, "y": -2 }
+          ]
+        },
+        {
+          "part": "ringA",
+          "duration": 2600,
+          "easing": "linear",
+          "keyframes": [
+            { "offset": 0, "s": 1, "o": 0 },
+            { "offset": 0.08, "s": 1.02, "o": 0.5 },
+            { "offset": 1, "s": 1.4, "o": 0 }
+          ]
+        },
+        {
+          "part": "ringB",
+          "duration": 2600,
+          "easing": "linear",
+          "keyframes": [
+            { "offset": 0, "s": 1.1935, "o": 0.2717 },
+            { "offset": 0.5, "s": 1.4, "o": 0 },
+            { "offset": 0.5, "s": 1, "o": 0 },
+            { "offset": 0.58, "s": 1.02, "o": 0.5 },
+            { "offset": 1, "s": 1.1935, "o": 0.2717 }
+          ]
+        }
+      ]
+    },
+    "scanning": {
+      "intent": "Inspecting: eyes sweep left and right with a slight squint, a thin dashed halo turns around the owl, small body sway. Trigger: a QR, link or message is being checked.",
+      "loop": true,
+      "pose": 0,
+      "tracks": [
+        {
+          "part": "root",
+          "duration": 4000,
+          "keyframes": [
+            { "offset": 0, "x": -6, "y": 0, "r": -1.2 },
+            { "offset": 0.25, "x": 0, "y": -3, "r": 0 },
+            { "offset": 0.5, "x": 6, "y": 0, "r": 1.2 },
+            { "offset": 0.75, "x": 0, "y": -3, "r": 0 },
+            { "offset": 1, "x": -6, "y": 0, "r": -1.2 }
+          ]
+        },
+        {
+          "part": "eyeL",
+          "duration": 2800,
+          "keyframes": [
+            { "offset": 0, "x": -15, "y": 3, "sy": 0.8 },
+            { "offset": 0.45, "x": 15, "y": 3, "sy": 0.8 },
+            { "offset": 0.5, "x": 15, "y": 3, "sy": 0.8 },
+            { "offset": 0.95, "x": -15, "y": 3, "sy": 0.8 },
+            { "offset": 1, "x": -15, "y": 3, "sy": 0.8 }
+          ]
+        },
+        {
+          "part": "eyeR",
+          "duration": 2800,
+          "keyframes": [
+            { "offset": 0, "x": -15, "y": 3, "sy": 0.8 },
+            { "offset": 0.45, "x": 15, "y": 3, "sy": 0.8 },
+            { "offset": 0.5, "x": 15, "y": 3, "sy": 0.8 },
+            { "offset": 0.95, "x": -15, "y": 3, "sy": 0.8 },
+            { "offset": 1, "x": -15, "y": 3, "sy": 0.8 }
+          ]
+        },
+        {
+          "part": "browL",
+          "duration": 3000,
+          "keyframes": [
+            { "offset": 0, "r": 2 },
+            { "offset": 0.5, "r": 3, "y": -1 },
+            { "offset": 1, "r": 2 }
+          ]
+        },
+        {
+          "part": "browR",
+          "duration": 3000,
+          "keyframes": [
+            { "offset": 0, "r": -2 },
+            { "offset": 0.5, "r": -3, "y": -1 },
+            { "offset": 1, "r": -2 }
+          ]
+        },
+        {
+          "part": "halo",
+          "duration": 9000,
+          "easing": "linear",
+          "keyframes": [
+            { "offset": 0, "r": 0, "o": 0.5 },
+            { "offset": 1, "r": 360, "o": 0.5 }
+          ]
+        }
+      ]
+    },
+    "alert": {
+      "intent": "Attention without alarm: one anticipatory squash, a quick small head shake with overshoot and settle, then a held pose with raised tufts, wide eyes and a small '!' mark. No red, no flashing. One-shot of 1700 ms that holds its last pose (reduced motion freezes on that held pose). Danger is carried by text and the risk badge, never by the mascot alone.",
+      "loop": false,
+      "hold": true,
+      "pose": 1,
+      "tracks": [
+        {
+          "part": "root",
+          "duration": 1700,
+          "keyframes": [
+            { "offset": 0 },
+            { "offset": 0.12, "y": 6, "sx": 1.04, "sy": 0.94, "ease": "ease-out" },
+            { "offset": 0.26, "y": -22, "sx": 0.98, "sy": 1.05 },
+            { "offset": 0.36, "y": -8, "r": 4, "sx": 1, "sy": 1 },
+            { "offset": 0.46, "y": -8, "r": -4 },
+            { "offset": 0.56, "y": -6, "r": 2.4 },
+            { "offset": 0.66, "y": -5, "r": -1.4 },
+            { "offset": 0.76, "y": -4, "r": 0, "sy": 1.008 },
+            { "offset": 1, "y": -4, "r": 0, "sy": 1.008 }
+          ]
+        },
+        {
+          "part": "eyeL",
+          "duration": 1700,
+          "keyframes": [
+            { "offset": 0 },
+            { "offset": 0.12, "y": 2, "sy": 0.86, "ease": "ease-out" },
+            { "offset": 0.26, "y": -4, "sx": 1.08, "sy": 1.14 },
+            { "offset": 1, "y": -4, "sx": 1.08, "sy": 1.14 }
+          ]
+        },
+        {
+          "part": "eyeR",
+          "duration": 1700,
+          "keyframes": [
+            { "offset": 0 },
+            { "offset": 0.12, "y": 2, "sy": 0.86, "ease": "ease-out" },
+            { "offset": 0.26, "y": -4, "sx": 1.08, "sy": 1.14 },
+            { "offset": 1, "y": -4, "sx": 1.08, "sy": 1.14 }
+          ]
+        },
+        {
+          "part": "browL",
+          "duration": 1700,
+          "keyframes": [
+            { "offset": 0 },
+            { "offset": 0.12, "r": 2, "y": 1 },
+            { "offset": 0.26, "r": -8, "y": -6 },
+            { "offset": 0.76, "r": -7, "y": -4 },
+            { "offset": 1, "r": -7, "y": -4 }
+          ]
+        },
+        {
+          "part": "browR",
+          "duration": 1700,
+          "keyframes": [
+            { "offset": 0 },
+            { "offset": 0.12, "r": -2, "y": 1 },
+            { "offset": 0.26, "r": 8, "y": -6 },
+            { "offset": 0.76, "r": 7, "y": -4 },
+            { "offset": 1, "r": 7, "y": -4 }
+          ]
+        },
+        {
+          "part": "bang",
+          "duration": 1700,
+          "easing": "ease-out",
+          "keyframes": [
+            { "offset": 0, "s": 0.3, "o": 0 },
+            { "offset": 0.26, "s": 0.3, "o": 0 },
+            { "offset": 0.36, "s": 1.25, "o": 1 },
+            { "offset": 0.5, "s": 1, "o": 1 },
+            { "offset": 1, "s": 1, "o": 1 }
+          ]
+        }
+      ]
+    },
+    "stealth": {
+      "intent": "Discreet: the owl settles to a still, faint silhouette (body opacity 0.14) with almost no motion. Entering and leaving blend over 700 ms. Loop of near-stillness, 6000 ms. Trigger: discreet appearance or a quiet background presence.",
+      "loop": true,
+      "pose": 0,
+      "blendMs": 700,
+      "exitBlendMs": 700,
+      "tracks": [
+        {
+          "part": "root",
+          "duration": 6000,
+          "keyframes": [
+            { "offset": 0, "o": 0.14 },
+            { "offset": 0.5, "o": 0.14, "y": -1.5 },
+            { "offset": 1, "o": 0.14 }
+          ]
+        }
+      ]
+    }
+  }
+}
