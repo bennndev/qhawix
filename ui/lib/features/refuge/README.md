@@ -5,39 +5,40 @@ window; while monitoring runs, Android sends an **SMS by itself** to the chosen 
 they are away from home during the window. **Everything here is real**: tests and alerts send
 real SMS. Nothing is mocked in the app.
 
-Run it on a phone from `ui/` (real channel, real SMS):
+Implemented with pub.dev packages (`PackagesSafeZonePlatform`): `native_geofence`,
+`another_telephony`, `geolocator`, `android_alarm_manager_plus`, `flutter_local_notifications`,
+`permission_handler`, `flutter_secure_storage`, `cryptography`. Spike verdict: **GO WITH CHANGES**
+(Honor needs guided OEM auto-start). See `spikes/safe_zone/RESULTS.md`.
+
+Run it on a phone from `ui/` (real SMS):
 
 ```
 flutter run -t lib/dev/safe_zone_demo_main.dart
 ```
 
-> **Recipients come from the Trust Circle's mock repository for now.** The demo entry wires
-> `trustCircleProviders()` (in-memory example contacts) above `refugeProviders()`. The SMS
-> destinations are therefore example numbers until the Trust Circle has a real repository; edit
-> the numbers in `trust_circle/data/mock/` locally to test with a real phone.
+> **Demo recipients:** `safe_zone_demo_main.dart` injects the Trust Circle **mock** so the wizard
+> has sample contacts. The main app uses the on-device Trust Circle store; pick real contacts there
+> before enabling monitoring.
 
 ## Screens
 
 | Screen | File | Reached from |
 | --- | --- | --- |
 | Hub (`RefugeScreen`): monitoring state, permission health, config summary, event history, tests, stop | `view/refuge_screen.dart` | module entry |
-| Onboarding wizard, 7 steps (what it does, recipients, home, parameters, sending, permissions, review) | `view/safe_zone_onboarding_screen.dart`, `view/onboarding_steps.dart` | hub when nothing is configured; hub "Editar ..." opens it at that step |
+| Onboarding wizard, 8 steps (… permissions, **inicio automático**, review) | `view/safe_zone_onboarding_screen.dart`, `view/onboarding_steps.dart` | hub when nothing is configured; hub "Editar ..." opens it at that step |
 | One permission rationale at a time | `core/widgets/permission_rationale_screen.dart` (reused) | wizard and hub |
 
-If nothing is configured, `RefugeScreen` shows the wizard. Off Android, or without Google Play
-services, it says the feature is not available on this device.
+If nothing is configured, `RefugeScreen` shows the wizard. Off Android it says the feature is not
+available on this device.
 
 ## Layers
 
-`domain/` (pure Dart: `SafeZoneConfig` with `issues()`, `AlertWindow.inWindow`, `SafeZoneStatus`,
-`SafeZoneEvent`, typed `SafeZoneError`s, ports `SafeZonePlatform` and `AlertRecipientSource`,
-`Clock`) -> `data/` (`MethodChannelSafeZonePlatform`, `SafeZoneMapper` = the only place that knows
-the wire JSON, `TrustCircleRecipientSource` reads only `trust_circle/domain`) -> `viewmodel/`
-(`SafeZoneStatusViewModel`, `SafeZoneSetupViewModel` shared by the onboarding and the settings
-edit; both discard stale async results and run a command once on double tap) -> `view/`.
+`domain/` (pure Dart: `SafeZoneConfig`, `SafeZoneEngine` episode rules, ports) ->
+`data/` (`PackagesSafeZonePlatform`, `SafeZoneFileStore`, `safe_zone_background.dart` entry
+points, `SafeZoneMapper`, `TrustCircleRecipientSource`; `MethodChannelSafeZonePlatform` kept only
+for legacy channel tests) -> `viewmodel/` -> `view/`.
 
-`refugeProviders()` wires them; it accepts a platform, a recipient source and a clock for tests.
-`trustCircleProviders()` must be above it in the tree when the default recipient source is used.
+`refugeProviders()` defaults to the package adapter; tests inject `FakeSafeZonePlatform`.
 
 ## Honest wording
 

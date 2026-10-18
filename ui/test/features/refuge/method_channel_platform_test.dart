@@ -263,28 +263,23 @@ void main() {
     },
   );
 
-  test('the event stream maps wire events, unknown types included', () async {
-    messenger.setMockStreamHandler(
-      eventChannel,
-      MockStreamHandler.inline(
-        onListen: (arguments, sink) {
-          sink.success({
-            'type': 'exit_detected',
-            'atMillis': 5,
-            'test': false,
-            'detail': null,
-          });
-          sink.success({'type': 'brand_new', 'atMillis': 6, 'test': true});
-          sink.endOfStream();
-        },
-      ),
-    );
-    final events = await platform.events.toList();
-    expect(events.map((e) => e.type), [
-      SafeZoneEventType.exitDetected,
-      SafeZoneEventType.unknown,
+  test(
+    'the placeholder event stream stays empty (package adapter owns events)',
+    () async {
+      expect(await platform.events.toList(), isEmpty);
+    },
+  );
+
+  test('confirmAutoStart and isAutoStartConfirmed go through the channel', () async {
+    answer = (call) => switch (call.method) {
+      'isAutoStartConfirmed' => {'confirmed': true},
+      _ => {'ok': true},
+    };
+    await platform.confirmAutoStart();
+    expect(await platform.isAutoStartConfirmed(), isTrue);
+    expect(calls.map((c) => c.method), [
+      'confirmAutoStart',
+      'isAutoStartConfirmed',
     ]);
-    expect(events.last.test, isTrue);
-    expect(events.first.atMillis, 5);
   });
 }

@@ -27,6 +27,23 @@ abstract final class SafeZoneLimits {
   static const defaultMessage =
       'Estoy fuera de casa a una hora inusual. Por favor, intenta '
       'comunicarte conmigo.';
+
+  /// One-shot GPS timeout used by the package adapter (seconds).
+  static const locationTimeoutSeconds = 25;
+
+  /// How long a background SMS isolate waits for SENT/DELIVERED (seconds).
+  static const smsStatusWaitSeconds = 20;
+
+  /// Neutral countdown notification copy (must not reveal the reason).
+  static const countdownNotificationTitle = 'QHAWIX';
+  static const countdownNotificationBody = 'Hay una acción pendiente.';
+  static const countdownCancelActionId = 'cancel_send';
+  static const countdownNotificationId = 7101;
+
+  static const homeGeofenceId = 'qhawix_home';
+  static const alarmMinAwayId = 7102;
+  static const alarmWindowOpenId = 7103;
+  static const alarmCountdownId = 7104;
 }
 
 /// A point on the map. It never leaves the device.

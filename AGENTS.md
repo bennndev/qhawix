@@ -148,12 +148,15 @@ Request each permission just in time, at the module that needs it, with an expla
 | Camera | QR Shield | Only when opening the scanner; URL paste as alternative |
 | Microphone + foreground service (microphone type) | EchoTrap | Started by the person; visible notification |
 | Call-screening role | EchoTrap | No audio access |
-| Location, including background "all the time" | Refuge | Local processing; explain why; zones not tracking |
+| Location, including background "all the time" | Refuge (safe-zone) | Local processing; zones not tracking; guided OEM auto-start required on Honor |
+| `SEND_SMS` | Refuge (safe-zone) | Direct SMS from the person's phone; no `READ_SMS` |
+| Exact alarms / boot | Refuge (safe-zone) | Countdown and window-open; force-stop cancels until reopen |
+| Battery optimization exemption | Refuge (safe-zone) | Requested; not sufficient alone on Honor without App launch |
 | Usage stats / overlay | Refuge tier A | Subject to spike S-03 |
 | Device or profile administration | Refuge tier B/C | Explicit enrollment flow |
-| Notifications | Trust Circle, all alerts | |
+| Notifications | Trust Circle, Refuge countdown | |
 | Accessibility service | **Avoid.** | Not approved; wallet apps may refuse to run with it. Needs an ADR. |
-| Contacts, SMS, call log | **Not requested.** | Trusted contacts are entered explicitly |
+| Contacts, call log, `READ_SMS` | **Not requested.** | Trusted contacts via system picker or typed; no full-agenda read |
 
 ## UX and Language Rules
 

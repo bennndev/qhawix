@@ -46,8 +46,10 @@ Future<void> _goToReview(WidgetTester tester) async {
   await _enter(tester, 0, '1234');
   await _enter(tester, 1, '1234');
   await _tapText(tester, 'Guardar PIN');
-  await _tapText(tester, 'Siguiente');
-  await _tapText(tester, 'Siguiente');
+  await _tapText(tester, 'Siguiente'); // permissions
+  await _tapText(tester, 'Siguiente'); // auto-start
+  await _tapText(tester, 'Ya lo activé en este teléfono');
+  await _tapText(tester, 'Siguiente'); // review
 }
 
 FilledButton _filled(WidgetTester tester, String label) => tester.widget(
@@ -99,7 +101,7 @@ void main() {
       expect(find.textContaining('fabricante del teléfono'), findsOneWidget);
       expect(find.textContaining('saldo en el chip'), findsOneWidget);
       expect(find.textContaining('red del operador'), findsOneWidget);
-      expect(find.textContaining('Paso 1 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 1 de 8'), findsOneWidget);
       expect(find.text('Atrás'), findsNothing);
     });
 
@@ -110,9 +112,9 @@ void main() {
         platform: FakeSafeZonePlatform(),
       );
       await _tapText(tester, 'Empezar');
-      expect(find.textContaining('Paso 2 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 2 de 8'), findsOneWidget);
       await _tapText(tester, 'Atrás');
-      expect(find.textContaining('Paso 1 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 1 de 8'), findsOneWidget);
     });
 
     testWidgets('next is blocked until name and a recipient are chosen', (
@@ -216,7 +218,7 @@ void main() {
       await _tapText(tester, 'Siguiente');
       await _tapText(tester, 'Usar mi ubicación actual');
       await _tapText(tester, 'Siguiente');
-      expect(find.textContaining('Paso 4 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 4 de 8'), findsOneWidget);
       expect(find.text('100 m'), findsOneWidget);
       expect(
         find.textContaining('errores de decenas de metros'),
@@ -251,7 +253,7 @@ void main() {
       await _tapText(tester, 'Continuar');
       await _tapText(tester, 'Siguiente');
       await _tapText(tester, 'Siguiente');
-      expect(find.textContaining('Paso 5 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 5 de 8'), findsOneWidget);
       expect(find.text('Enviar directo'), findsOneWidget);
       expect(find.text('30 s'), findsOneWidget);
       expect(find.text('120 s'), findsOneWidget);
@@ -289,7 +291,7 @@ void main() {
       );
       await _goToReview(tester);
       await _tapText(tester, 'Ir a permisos');
-      expect(find.textContaining('Paso 6 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 6 de 8'), findsOneWidget);
       final order = [
         'Ubicación precisa',
         'Ubicación todo el tiempo',
@@ -333,7 +335,7 @@ void main() {
           platform: platform,
         );
         await _goToReview(tester);
-        expect(find.textContaining('Paso 7 de 7'), findsOneWidget);
+        expect(find.textContaining('Paso 8 de 8'), findsOneWidget);
         expect(_filled(tester, 'Iniciar monitoreo').onPressed, isNull);
         expect(
           find.textContaining('faltan permisos obligatorios'),
@@ -438,6 +440,9 @@ void main() {
       await check();
       await _tapText(tester, 'Siguiente');
       await check();
+      await _tapText(tester, 'Ya lo activé en este teléfono');
+      await _tapText(tester, 'Siguiente');
+      await check();
     });
   });
 
@@ -449,7 +454,7 @@ void main() {
         platform: FakeSafeZonePlatform(),
       );
       expect(find.text('Empezar'), findsOneWidget);
-      expect(find.textContaining('Paso 1 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 1 de 8'), findsOneWidget);
     });
 
     testWidgets('unavailable device', (tester) async {
@@ -459,7 +464,7 @@ void main() {
         platform: FakeSafeZonePlatform()..failWith = const UnavailableError(),
       );
       expect(find.text('No disponible en este dispositivo'), findsOneWidget);
-      expect(find.textContaining('Google Play'), findsOneWidget);
+      expect(find.textContaining('solo corren en Android'), findsOneWidget);
     });
 
     testWidgets('shows monitoring, permission health, config and history', (
@@ -594,7 +599,7 @@ void main() {
         platform: _configuredPlatform(),
       );
       await _tapText(tester, 'Editar casa');
-      expect(find.textContaining('Paso 3 de 7'), findsOneWidget);
+      expect(find.textContaining('Paso 3 de 8'), findsOneWidget);
       expect(find.text('Cancelar'), findsOneWidget);
       await _tapText(tester, 'Cancelar');
       expect(find.text('Configuración'), findsOneWidget);

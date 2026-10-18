@@ -88,6 +88,13 @@ abstract final class SafeZoneMapper {
     detail: m['detail'] as String?,
   );
 
+  static Map<String, Object?> eventToWire(SafeZoneEvent e) => {
+    'type': _eventWire[e.type] ?? 'unknown',
+    'atMillis': e.atMillis,
+    'test': e.test,
+    'detail': e.detail,
+  };
+
   static const _eventTypes = <String, SafeZoneEventType>{
     'monitoring_started': SafeZoneEventType.monitoringStarted,
     'monitoring_stopped': SafeZoneEventType.monitoringStopped,
@@ -103,6 +110,24 @@ abstract final class SafeZoneMapper {
     'sms_sent': SafeZoneEventType.smsSent,
     'sms_failed': SafeZoneEventType.smsFailed,
     'permission_lost': SafeZoneEventType.permissionLost,
+  };
+
+  static const _eventWire = <SafeZoneEventType, String>{
+    SafeZoneEventType.monitoringStarted: 'monitoring_started',
+    SafeZoneEventType.monitoringStopped: 'monitoring_stopped',
+    SafeZoneEventType.exitDetected: 'exit_detected',
+    SafeZoneEventType.enteredHome: 'entered_home',
+    SafeZoneEventType.windowOpenedWhileAway: 'window_opened_while_away',
+    SafeZoneEventType.awayConfirmed: 'away_confirmed',
+    SafeZoneEventType.suppressedOutsideWindow: 'suppressed_outside_window',
+    SafeZoneEventType.suppressedDailyLimit: 'suppressed_daily_limit',
+    SafeZoneEventType.suppressedAlreadyAlerted: 'suppressed_already_alerted',
+    SafeZoneEventType.countdownStarted: 'countdown_started',
+    SafeZoneEventType.countdownCancelled: 'countdown_cancelled',
+    SafeZoneEventType.smsSent: 'sms_sent',
+    SafeZoneEventType.smsFailed: 'sms_failed',
+    SafeZoneEventType.permissionLost: 'permission_lost',
+    SafeZoneEventType.unknown: 'unknown',
   };
 
   static PermissionResult permissionResultFromWire(Object? value) =>

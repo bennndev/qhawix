@@ -36,6 +36,11 @@ abstract interface class SafeZonePlatform {
 
   Future<bool> cancelCountdown();
 
+  /// Person confirmed OEM auto-start settings (cannot be read from the OS).
+  Future<void> confirmAutoStart();
+
+  Future<bool> isAutoStartConfirmed();
+
   /// Events native pushes while the app is alive.
   Stream<SafeZoneEvent> get events;
 }

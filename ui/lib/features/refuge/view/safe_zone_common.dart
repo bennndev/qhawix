@@ -34,11 +34,11 @@ class SafeZoneUnavailableView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const EmptyState(
     icon: Icons.phonelink_erase_outlined,
-    title: 'Zona segura aún no conectada',
+    title: 'No disponible en este dispositivo',
     message:
-        'El menú ya funciona. Las alertas en segundo plano se conectan con '
-        'los paquetes de Flutter (sin código Kotlin propio). Mientras tanto '
-        'podés recorrer los demás módulos.',
+        'Las alertas de zona segura solo corren en Android con los servicios '
+        'de ubicación y SMS del teléfono. En este dispositivo no se pueden '
+        'activar.',
   );
 }
 

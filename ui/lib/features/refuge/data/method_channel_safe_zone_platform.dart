@@ -147,6 +147,16 @@ class MethodChannelSafeZonePlatform implements SafeZonePlatform {
       SafeZoneMapper.asMap(await _call('cancelCountdown'))['ok'] == true;
 
   @override
+  Future<void> confirmAutoStart() async {
+    await _call('confirmAutoStart');
+  }
+
+  @override
+  Future<bool> isAutoStartConfirmed() async =>
+      SafeZoneMapper.asMap(await _call('isAutoStartConfirmed'))['confirmed'] ==
+      true;
+
+  @override
   Stream<SafeZoneEvent> get events {
     // Do not attach to the EventChannel while this placeholder has no native
     // peer (MissingPluginException on listen). The package-based adapter will

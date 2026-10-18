@@ -18,11 +18,12 @@ enum SetupStep {
   parameters,
   sending,
   permissions,
+  autoStart,
   review,
 }
 
 /// A command the wizard can be running. At most one at a time.
-enum SetupCommand { locate, permission, pin, sendTest, finish }
+enum SetupCommand { locate, permission, pin, autoStart, sendTest, finish }
 
 /// Draft of the configuration plus the commands to complete it. Used by the
 /// onboarding and by the settings edit. Real platform calls, nothing mocked.
@@ -45,6 +46,7 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
   bool _unavailable = false;
   SafeZoneStatus? _status;
   bool _pinSet = false;
+  bool _autoStartConfirmed = false;
   List<AlertRecipient> _available = const [];
   final Set<String> _selectedPhones = {};
 
@@ -75,6 +77,7 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
       _status?.permissions ?? const SafePermissions.none();
   bool get monitoringNow => _status?.monitoring ?? false;
   bool get pinSet => _pinSet;
+  bool get autoStartConfirmed => _autoStartConfirmed;
   List<AlertRecipient> get availableRecipients => _available;
   Set<String> get selectedPhones => Set.unmodifiable(_selectedPhones);
   String get ownerName => _ownerName;
@@ -143,6 +146,7 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
       },
       SetupStep.intro ||
       SetupStep.permissions ||
+      SetupStep.autoStart ||
       SetupStep.review => const <ConfigIssue>{},
     };
     return [
@@ -158,7 +162,8 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
       permissions.missingRequired(hasCountdown: _countdown > 0);
 
   /// Whether "Iniciar monitoreo" may run.
-  bool get canStart => allIssues.isEmpty && missingRequired.isEmpty;
+  bool get canStart =>
+      allIssues.isEmpty && missingRequired.isEmpty && _autoStartConfirmed;
 
   // -- navigation ----------------------------------------------------------
 
@@ -230,10 +235,12 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
       final status = await _platform.getStatus();
       final stored = await _platform.loadConfig();
       final pinSet = await _platform.hasCancelPin();
+      final autoStart = await _platform.isAutoStartConfirmed();
       final candidates = await _recipientSource.activeRecipients();
       if (_stale(revision)) return;
       _status = status;
       _pinSet = pinSet;
+      _autoStartConfirmed = autoStart;
       _available = candidates;
       if (stored != null) _prefill(stored);
     } on UnavailableError {
@@ -294,6 +301,14 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
     _home = GeoPoint(lat: location.lat, lng: location.lng);
     _homeAccuracy = location.accuracyMeters;
     return null;
+  });
+
+  Future<void> confirmAutoStart() => _command(SetupCommand.autoStart, () async {
+    await _platform.confirmAutoStart();
+    _autoStartConfirmed = true;
+    return const CommandNote.ok(
+      'Quedó registrado que activaste el inicio automático en este teléfono.',
+    );
   });
 
   Future<void> requestPermission(PermissionKind kind) =>
@@ -376,9 +391,11 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
     CommandNote? note;
     try {
       note = await body();
-    } on PermissionMissingError {
-      note = const CommandNote.problem(
-        'Falta un permiso. Concédelo e inténtalo otra vez.',
+    } on PermissionMissingError catch (e) {
+      note = CommandNote.problem(
+        e.message == 'auto_start'
+            ? 'Confirma el inicio automático en el paso anterior antes de activar.'
+            : 'Falta un permiso. Concédelo e inténtalo otra vez.',
       );
     } on InvalidConfigError {
       note = const CommandNote.problem(

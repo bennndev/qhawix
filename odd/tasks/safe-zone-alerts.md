@@ -59,6 +59,12 @@ Windows 11, Git Bash. Flutter 3.41.6 (Dart 3.11.4). Phone serial `AWYRVB3A270011
 ## Open decisions (do not resolve silently; ask the owner)
 Deep teal `#0B5D6B` as the accent; whether the AURA module keeps its name next to the Guardian de Comportamiento mascot; the discreet label of the "Refugio" tab; whether `stealth` may appear on Inicio; the Android package id `pe.qhawix.qhawix` (provisional); the `supabase_flutter` dependency (kept for later accounts); Google Play distribution (the SMS and background-location permissions are restricted there; today the APK is sideloaded).
 
+## Implementation tasks (after GO WITH CHANGES)
+- [x] T1 (S1–S3, S6): pure Dart rule engine + unit tests — inline
+- [x] T2 (S1, S3, S5): `PackagesSafeZonePlatform`, file store, background entry points — inline
+- [x] T3 (S1, S7): Android manifest/Gradle, auto-start onboarding step, wire providers — inline
+- [ ] T4: device verify on Honor + analyze/test + work-unit commits — inline
+
 ## Log
 - L1 (2026-10-17): the owner asked that the user configure in the onboarding the permissions, the distance from home and the hour from which being away is an anomaly, to send SMS automatically in the background to the safe circle (S1).
 - L2: "Cuando se cumplen ambas, o que el usuario lo pueda configurar, me parece bien toda la implementación. ¿Podrías implementarlo?" (S2).
@@ -66,3 +72,5 @@ Deep teal `#0B5D6B` as the accent; whether the AURA module keeps its name next t
 - L4: "Prueba para ver si las librerias pueden lograr lo que queremos" (the spike). The phone was authorized and the recipient number supplied by the owner.
 - L5: the owner moved to Cursor because Claude tokens ran out: "quiero usarlo en Cursor para que termine de implementar la feature o la determine como fallida".
 - L6 (2026-10-17 evening): owner enabled Honor App launch (auto-launch, secondary, background). Five consecutive killed-process Q7 alarms passed. Owner could not leave the building; Q2 done with adb mock GPS — 3/3 exits with real SMS SENT/DELIVERED, process dead. Verdict: **GO WITH CHANGES** (guided auto-start required; physical walk still a follow-up). SMS cap 6/6 reached. Q3/Q4 still untested.
+- L7 (2026-10-17): owner: "Empieza con la implementación, el teléfono está conectado." Spike phase closed; building package adapter.
+- L8 (2026-10-17): Implemented `SafeZoneEngine`, `SafeZoneFileStore`, `PackagesSafeZonePlatform`, background geofence/alarm callbacks, Android manifest/Gradle (desugar, minSdk 23), onboarding step "Permitir inicio automático". Refuge tests 93 passed. Device verify pending.

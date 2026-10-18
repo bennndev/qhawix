@@ -823,7 +823,97 @@ class _PermissionRow extends StatelessWidget {
   }
 }
 
-// -- 7. Review ---------------------------------------------------------------
+// -- 7. Auto-start (OEM) -----------------------------------------------------
+
+class AutoStartStep extends StatelessWidget {
+  const AutoStartStep({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<SafeZoneSetupViewModel>();
+    final space = context.space;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const PageHeader(
+          title: 'Permitir inicio automático',
+          subtitle:
+              'En muchos teléfonos el sistema detiene la app al cerrarla. '
+              'Sin este permiso, la alerta SMS puede no salir con la app '
+              'cerrada. QHAWIX no puede leer si ya lo activaste: debes '
+              'confirmarlo tú.',
+        ),
+        SizedBox(height: space.lg),
+        QhawixCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Honor / Huawei', style: context.text.titleMedium),
+              SizedBox(height: space.sm),
+              Text(
+                'Ajustes → Aplicaciones → Inicio de aplicaciones → QHAWIX → '
+                'gestión manual: activa Inicio automático, Inicio secundario '
+                'y Ejecutar en segundo plano.',
+                style: context.text.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: space.md),
+        QhawixCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Xiaomi / Redmi', style: context.text.titleMedium),
+              SizedBox(height: space.sm),
+              Text(
+                'Ajustes → Aplicaciones → Administrar aplicaciones → QHAWIX → '
+                'Autostart: activar. También Autorización de ahorro de batería '
+                '→ Sin restricciones.',
+                style: context.text.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: space.md),
+        QhawixCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Samsung y otros', style: context.text.titleMedium),
+              SizedBox(height: space.sm),
+              Text(
+                'Ajustes → Batería → Límites de uso en segundo plano → QHAWIX → '
+                'sin límites. Busca también “Inicio automático” o “Apps que '
+                'nunca duermen” si tu marca lo muestra.',
+                style: context.text.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: space.lg),
+        const StatusBanner(
+          kind: StatusBannerKind.caution,
+          message:
+              'Si fuerza el cierre de QHAWIX desde recientes, Android cancela '
+              'alarmas y geocercas hasta que abras la app otra vez.',
+        ),
+        SizedBox(height: space.md),
+        PrimaryButton(
+          label: 'Ya lo activé en este teléfono',
+          loading: vm.busy,
+          onPressed: vm.busy ? () {} : vm.confirmAutoStart,
+        ),
+        if (vm.note != null) ...[
+          SizedBox(height: space.md),
+          StatusBanner(message: vm.note!.message),
+        ],
+      ],
+    );
+  }
+}
+
+// -- 8. Review ---------------------------------------------------------------
 
 class ReviewStep extends StatelessWidget {
   const ReviewStep({super.key, required this.onSendTest});

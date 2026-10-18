@@ -53,6 +53,7 @@ class _Wizard extends StatelessWidget {
     SetupStep.parameters: 'Parámetros',
     SetupStep.sending: 'Envío',
     SetupStep.permissions: 'Permisos',
+    SetupStep.autoStart: 'Inicio automático',
     SetupStep.review: 'Revisión',
   };
 
@@ -64,6 +65,7 @@ class _Wizard extends StatelessWidget {
         SetupStep.parameters => const ParametersStep(),
         SetupStep.sending => const SendingStep(),
         SetupStep.permissions => const PermissionsStep(),
+        SetupStep.autoStart => const AutoStartStep(),
         SetupStep.review => ReviewStep(
           onSendTest: () => _sendTest(context, vm),
         ),

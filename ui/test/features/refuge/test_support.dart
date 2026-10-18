@@ -161,6 +161,20 @@ class FakeSafeZonePlatform implements SafeZonePlatform {
     return true;
   }
 
+  bool autoStartConfirmed = true;
+
+  @override
+  Future<void> confirmAutoStart() async {
+    _check('confirmAutoStart');
+    autoStartConfirmed = true;
+  }
+
+  @override
+  Future<bool> isAutoStartConfirmed() async {
+    _check('isAutoStartConfirmed');
+    return autoStartConfirmed;
+  }
+
   @override
   Stream<SafeZoneEvent> get events => _events.stream;
 }
