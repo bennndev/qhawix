@@ -4,10 +4,22 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'package:provider/provider.dart';
+
+import '../../../core/theme/theme_extensions.dart';
+import '../../../core/timeouts.dart';
+import '../../trust_circle/domain/alert_preferences.dart';
+import '../../trust_circle/domain/trust_circle_repository.dart';
+import '../../trust_circle/domain/trust_contact.dart';
+import '../data/scam_alert_sms.dart';
+import '../domain/scam_response.dart';
+import '../domain/voice_origin_level.dart';
 
 const _phoneBridge = MethodChannel('pe.qhawix.qhawix/echotrap');
 
@@ -32,6 +44,10 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
   String _transcript = '';
   String? _voiceOriginStatus;
   double? _voiceOriginScore;
+  List<String> _reasons = const [];
+  bool _scamResponseTriggered = false;
+  String? _contactsAlertStatus;
+  String? _callerNotice;
   String? _savedPhone;
   String _intelligenceSummary = '';
   List<Map<String, dynamic>> _intelligenceSources = const [];
@@ -410,6 +426,18 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
           _listenToCaller(event.track as RemoteAudioTrack);
         }
       });
+      listener.on<DataReceivedEvent>((event) {
+        // Only the person being called can warn the caller.
+        if (_isCallee || event.topic != ScamNotice.topic) return;
+        final notice = ScamNotice.tryParse(event.data);
+        if (notice == null) return;
+        if (mounted) setState(() => _callerNotice = notice.spokenText);
+        unawaited(
+          _phoneBridge
+              .invokeMethod<void>('speakWarning', {'text': notice.spokenText})
+              .catchError((_) {}),
+        );
+      });
       _room = room;
       _roomListener = listener;
       await room.connect(data['url'] as String, data['token'] as String);
@@ -472,6 +500,69 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
     );
   }
 
+  /// Red call: warn the caller out loud and warn the trusted contacts, once.
+  void _maybeRespondToScam() {
+    if (!_isCallee || _scamResponseTriggered || _effectiveTier != 'red') {
+      return;
+    }
+    _scamResponseTriggered = true;
+    unawaited(_respondToScam());
+  }
+
+  Future<void> _respondToScam() async {
+    final warned = await _alertTrustedContacts().timeout(
+      AppTimeouts.echoTrapContactAlert,
+      onTimeout: () => 0,
+    );
+    try {
+      await _room?.localParticipant?.publishData(
+        ScamNotice(reported: warned > 0).encode(),
+        reliable: true,
+        topic: ScamNotice.topic,
+      );
+    } catch (_) {
+      // The warning to the caller is best effort; the alert to contacts stands.
+    }
+  }
+
+  /// Sends a real SMS to the contacts chosen for this event (all active
+  /// contacts when none was chosen). Returns how many were sent.
+  Future<int> _alertTrustedContacts() async {
+    String? status;
+    var sent = 0;
+    try {
+      final snapshot = await context.read<TrustCircleRepository>().load();
+      final chosen = snapshot.alertPreferences.recipientsOf(
+        AlertEventKind.voiceCloneDetected,
+      );
+      final phones = [
+        for (final contact in snapshot.contacts)
+          if (contact.status == ContactStatus.active &&
+              contact.permissions.receiveAlerts &&
+              (chosen.isEmpty || chosen.contains(contact.id)))
+            contact.phone,
+      ];
+      if (phones.isEmpty) {
+        status =
+            'No hay contactos de confianza activos. Agrégalos en Red para que se les avise.';
+      } else if (!await const ScamAlertSms().ensurePermission()) {
+        status =
+            'No se avisó a tus contactos: falta el permiso de SMS. Actívalo en Ajustes.';
+      } else {
+        sent = await const ScamAlertSms().sendAll(phones, scamAlertSmsText);
+        status = sent == 0
+            ? 'No se pudo enviar el SMS a tus contactos.'
+            : sent == 1
+            ? 'Se avisó por SMS a 1 contacto de confianza.'
+            : 'Se avisó por SMS a $sent contactos de confianza.';
+      }
+    } catch (_) {
+      status = 'No se pudo avisar a tus contactos de confianza.';
+    }
+    if (mounted) setState(() => _contactsAlertStatus = status);
+    return sent;
+  }
+
   Future<void> _checkVoiceOrigin(Uint8List pcm) async {
     final callId = _callId;
     if (callId == null) return;
@@ -493,9 +584,10 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
             data['available'] == true && data['status'] == 'done'
             ? (_voiceOriginScore == null
                   ? 'No se obtuvo un resultado concluyente.'
-                  : 'Señal estimada de audio sintético: ${(_voiceOriginScore! * 100).round()}%')
+                  : 'Voz: ${voiceOriginPercent(_voiceOriginScore!)}% de señal sintética')
             : 'La revisión de origen de voz no está disponible.';
       });
+      _maybeRespondToScam();
     } catch (_) {
       if (mounted) {
         setState(
@@ -549,8 +641,14 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
               : 'Llamada conectada · análisis en vivo';
           if (verdict is Map && verdict['tier'] is String) {
             _tier = verdict['tier'] as String;
+            _reasons = (verdict['reasons'] as List? ?? const [])
+                .whereType<String>()
+                .map((reason) => reason.trim())
+                .where((reason) => reason.isNotEmpty)
+                .toList(growable: false);
           }
         });
+        _maybeRespondToScam();
         final tier = verdict is Map ? verdict['tier'] : null;
         final callId = _callId;
         if ((tier == 'amber' || tier == 'red') &&
@@ -679,6 +777,10 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
     _voiceScanRequested = false;
     _voiceOriginScore = null;
     _voiceOriginStatus = null;
+    _reasons = const [];
+    _scamResponseTriggered = false;
+    _contactsAlertStatus = null;
+    _callerNotice = null;
     _analysisCallId = null;
     _muted = false;
     if (notify && id != null) {
@@ -720,11 +822,50 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
     return 'No se pudo completar la solicitud.';
   }
 
-  Color get _riskColor => switch (_tier) {
-    'red' => Colors.red,
-    'amber' => Colors.orange,
-    _ => Colors.green,
-  };
+  VoiceOriginLevel? get _voiceLevel {
+    final score = _voiceOriginScore;
+    return score == null ? null : classifyVoiceOrigin(score);
+  }
+
+  /// The call is as risky as its worst signal: what is said or how it sounds.
+  String get _effectiveTier {
+    if (_tier == 'red' || _voiceLevel == VoiceOriginLevel.synthetic) {
+      return 'red';
+    }
+    if (_tier == 'amber' || _voiceLevel == VoiceOriginLevel.doubtful) {
+      return 'amber';
+    }
+    return 'green';
+  }
+
+  Color _tierColor(String tier) {
+    final palette = context.riskPalette;
+    return switch (tier) {
+      'red' => palette.high.foreground,
+      'amber' => palette.caution.foreground,
+      _ => palette.noneDetected.foreground,
+    };
+  }
+
+  Color get _riskColor => _tierColor(_effectiveTier);
+
+  /// One short sentence on why the call was flagged.
+  String get _shortReason {
+    final parts = <String>[];
+    if (_voiceLevel == VoiceOriginLevel.synthetic) {
+      parts.add('la voz parece generada por IA');
+    }
+    for (final reason in _reasons) {
+      if (parts.length >= 2) break;
+      parts.add(
+        reason.endsWith('.') ? reason.substring(0, reason.length - 1) : reason,
+      );
+    }
+    if (parts.isEmpty) return '';
+    final text = parts.join('; ');
+    final trimmed = text.length > 140 ? '${text.substring(0, 137)}…' : text;
+    return '${trimmed[0].toUpperCase()}${trimmed.substring(1)}.';
+  }
 
   @override
   void dispose() {
@@ -776,37 +917,139 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
     }
   }
 
-  Widget _riskSummary() => Card(
-    color: _riskColor.withValues(alpha: .11),
+  /// Shown to the person once the call turned red and the automatic warning ran.
+  Widget _autoResponseCard() => Card(
     child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.shield_outlined, color: _riskColor, size: 30),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _tier == 'red'
-                      ? 'Señal de riesgo alta'
-                      : _tier == 'amber'
-                      ? 'Señal de precaución'
-                      : 'Análisis activo',
-                  style: TextStyle(
-                    color: _riskColor,
-                    fontWeight: FontWeight.w700,
-                  ),
+          const Row(
+            children: [
+              Icon(Icons.record_voice_over, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Se avisó con voz sintética a quien llama.'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.sms_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _contactsAlertStatus ?? 'Avisando a tus contactos…',
                 ),
-                Text(_status),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     ),
   );
+
+  /// TruthScan result: green under 10%, yellow 10-30%, red from 30%.
+  Widget _voiceOriginRow() {
+    final score = _voiceOriginScore;
+    final level = _voiceLevel;
+    if (score == null || level == null) {
+      return Row(
+        children: [
+          const Icon(Icons.graphic_eq, size: 19),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(_voiceOriginStatus ?? 'Voz: todavía no revisada'),
+          ),
+        ],
+      );
+    }
+    final percent = voiceOriginPercent(score);
+    final (tier, label, icon) = switch (level) {
+      VoiceOriginLevel.normal => ('green', 'Voz normal', Icons.check_circle),
+      VoiceOriginLevel.doubtful => ('amber', 'Voz dudosa', Icons.help),
+      VoiceOriginLevel.synthetic => (
+        'red',
+        'Posible voz clonada por IA',
+        Icons.warning_rounded,
+      ),
+    };
+    final color = _tierColor(tier);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.w700),
+            ),
+          ),
+          Text(
+            '$percent%',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _riskSummary() {
+    final tier = _effectiveTier;
+    final headline = switch (tier) {
+      'red' => 'Es una estafa',
+      'amber' => 'Posible estafa',
+      _ => 'Sin señales de estafa',
+    };
+    final reason = _shortReason;
+    return Card(
+      color: _riskColor.withValues(alpha: .14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: _riskColor, width: 1.5),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              tier == 'green' ? Icons.verified_user_outlined : Icons.gpp_bad,
+              color: _riskColor,
+              size: 34,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    headline,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: _riskColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (reason.isNotEmpty && tier != 'green') Text(reason),
+                  if (tier == 'green') Text(_status),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _profileNumber() => Card(
     child: ExpansionTile(
@@ -1176,62 +1419,57 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
     ],
   );
 
-  Widget _sourcesPanel() => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  /// Web search kept short: a one-line summary, sources behind a tap.
+  Widget _sourcesPanel() {
+    if (_intelligenceLoading) {
+      return const Card(
+        child: ListTile(
+          dense: true,
+          leading: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          title: Text('Buscando fuentes oficiales…'),
+        ),
+      );
+    }
+    if (_intelligenceSummary.isEmpty && _intelligenceSources.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final firstSentence = _intelligenceSummary
+        .split(RegExp(r'(?<=[.!?])\s'))
+        .first;
+    final summary = firstSentence.length > 120
+        ? '${firstSentence.substring(0, 117)}…'
+        : firstSentence;
+    return Card(
+      child: ExpansionTile(
+        leading: const Icon(Icons.travel_explore),
+        title: Text(summary.isEmpty ? 'Fuentes oficiales' : summary),
+        subtitle: _intelligenceSources.isEmpty
+            ? null
+            : Text('${_intelligenceSources.length} fuentes · toca para ver'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         children: [
-          Row(
-            children: [
-              const Icon(Icons.travel_explore),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Fuentes públicas',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              if (_intelligenceLoading)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _intelligenceLoading
-                ? 'Buscando alertas y canales oficiales…'
-                : _intelligenceSummary.isEmpty
-                ? 'La búsqueda se inicia si la conversación presenta señales de riesgo.'
-                : _intelligenceSummary,
-          ),
-          for (final source in _intelligenceSources)
+          for (final source in _intelligenceSources.take(3))
             ListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
               leading: const Icon(Icons.open_in_new, size: 18),
               title: Text(source['title'] as String? ?? 'Fuente oficial'),
-              subtitle: Text(
-                [
-                  if (source['excerpt'] is String) source['excerpt'] as String,
-                  if (source['url'] is String) source['url'] as String,
-                ].join('\n'),
-              ),
               onTap: source['url'] is String
                   ? () => _openOfficialSource(source['url'] as String)
                   : null,
             ),
           Text(
-            'Una alerta o noticia no demuestra que la persona que llama esté implicada. Si no aparece un resultado, eso tampoco confirma que sea legítima.',
+            'Una noticia no demuestra quién llama; su ausencia tampoco confirma que sea legítima.',
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 
   Widget _activeCallBody() => ListView(
     padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
@@ -1256,6 +1494,21 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
       Text(_status, textAlign: TextAlign.center),
       const SizedBox(height: 18),
       _riskSummary(),
+      if (_isCallee && _scamResponseTriggered) _autoResponseCard(),
+      if (!_isCallee && _callerNotice != null)
+        Card(
+          color: context.riskPalette.high.background,
+          child: ListTile(
+            leading: Icon(
+              Icons.record_voice_over,
+              color: context.riskPalette.high.foreground,
+            ),
+            title: Text(
+              _callerNotice!,
+              style: TextStyle(color: context.riskPalette.high.foreground),
+            ),
+          ),
+        ),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -1269,21 +1522,10 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
               const SizedBox(height: 8),
               Text(_transcript.isEmpty ? 'Esperando voz…' : _transcript),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.graphic_eq, size: 19),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _voiceOriginStatus ??
-                          'Origen de voz: todavía no revisado',
-                    ),
-                  ),
-                ],
-              ),
+              _voiceOriginRow(),
               const SizedBox(height: 4),
               Text(
-                'TruthScan entrega una estimación experimental de audio sintético. No reconoce la identidad, no determina si es una estafa y no sirve como prueba.',
+                'Estimación experimental de voz sintética. No identifica a la persona ni sirve como prueba.',
                 style: Theme.of(context).textTheme.labelSmall,
               ),
             ],
@@ -1315,6 +1557,16 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
     ],
   );
 
+  /// Leaves EchoTrap for the Inicio menu, even when it was opened without a
+  /// route underneath (cold start, restored route).
+  void _leaveToHome() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/inicio');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final inCall = _incoming != null || _callId != null;
@@ -1323,53 +1575,64 @@ class _EchoTrapScreenState extends State<EchoTrapScreen> {
         : _selectedTab == 2
         ? _protectionBody()
         : _dialerBody();
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('EchoTrap'),
-        automaticallyImplyLeading: false,
-        actions: [
-          if (!inCall)
-            IconButton(
-              tooltip: 'Cerrar sesión',
-              icon: const Icon(Icons.logout),
-              onPressed: () => _db.auth.signOut(),
-            ),
-        ],
+    return PopScope(
+      // Never drop out of a live call by accident with the system back.
+      canPop: !inCall,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('EchoTrap'),
+          automaticallyImplyLeading: false,
+          leading: inCall
+              ? null
+              : IconButton(
+                  tooltip: 'Volver al inicio',
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _leaveToHome,
+                ),
+          actions: [
+            if (!inCall)
+              IconButton(
+                tooltip: 'Cerrar sesión',
+                icon: const Icon(Icons.logout),
+                onPressed: () => _db.auth.signOut(),
+              ),
+          ],
+        ),
+        body: _incoming != null
+            ? _incomingBody()
+            : _callId != null
+            ? _activeCallBody()
+            : page,
+        bottomNavigationBar: inCall
+            ? null
+            : NavigationBar(
+                selectedIndex: _selectedTab,
+                onDestinationSelected: (index) {
+                  if (index == 1) {
+                    _showContacts();
+                  } else {
+                    setState(() => _selectedTab = index);
+                  }
+                },
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.dialpad_outlined),
+                    selectedIcon: Icon(Icons.dialpad),
+                    label: 'Llamar',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.contacts_outlined),
+                    selectedIcon: Icon(Icons.contacts),
+                    label: 'Contactos',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.shield_outlined),
+                    selectedIcon: Icon(Icons.shield),
+                    label: 'Protección',
+                  ),
+                ],
+              ),
       ),
-      body: _incoming != null
-          ? _incomingBody()
-          : _callId != null
-          ? _activeCallBody()
-          : page,
-      bottomNavigationBar: inCall
-          ? null
-          : NavigationBar(
-              selectedIndex: _selectedTab,
-              onDestinationSelected: (index) {
-                if (index == 1) {
-                  _showContacts();
-                } else {
-                  setState(() => _selectedTab = index);
-                }
-              },
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.dialpad_outlined),
-                  selectedIcon: Icon(Icons.dialpad),
-                  label: 'Llamar',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.contacts_outlined),
-                  selectedIcon: Icon(Icons.contacts),
-                  label: 'Contactos',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.shield_outlined),
-                  selectedIcon: Icon(Icons.shield),
-                  label: 'Protección',
-                ),
-              ],
-            ),
     );
   }
 }
