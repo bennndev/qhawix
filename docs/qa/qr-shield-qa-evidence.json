@@ -1,0 +1,274 @@
+{
+  "source": "QHAWIX-ESPECIFICACION-MAESTRA.md §32/§37 v1.0.0",
+  "project_commit": "f83702132ca45a06025e4e6db71103cd91a4ace5",
+  "environment": {
+    "date": "2026-10-17",
+    "timezone": "America/Bogota",
+    "branch": "feature/qr-shield",
+    "working_tree": "dirty; changes remain local and uncommitted",
+    "flutter": "not found on PATH",
+    "dart": "not found on PATH",
+    "python": "WindowsApps shim inaccessible",
+    "device": "no Android device/emulator evidence",
+    "provider": "unconfigured",
+    "master_sha256": "9e54e1948289b0282f28decefc20a63d9d42263c5a87ecf8b06755a613af4216"
+  },
+  "test_cases": {
+    "T-01": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-02": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-03": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-04": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-05": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-06": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-07": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-08": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-09": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-10": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-11": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-12": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-13": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce.",
+        "qr_shield_views_test.dart cubre la vista de candidatos; no se pudo ejecutar porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas de deduplicación/selección y representación de candidatos añadidas; falta ejecutarlas y probar cámara/lifecycle con Android."
+    },
+    "T-14": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas de política negativa mock añadidas; no se ejecutaron porque Flutter/Dart no están disponibles. La integración real aún no existe y AC-06 permanece bloqueado."
+    },
+    "T-15": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas locales de HTTP, punycode, acortadores y secretos añadidas; no ejecutadas por falta de Flutter/Dart."
+    },
+    "T-16": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce.",
+        "qr_shield_views_test.dart cubre el descarte de confirmación obsoleta al reemplazar el QR; flutter test test/features/qr_shield/view/qr_shield_views_test.dart falla porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas de bloqueo de match simulado y de confirmación obsoleta añadidas; no ejecutadas por falta de Flutter/Dart. No equivale a una consulta real."
+    },
+    "T-17": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce.",
+        "qr_shield_views_test.dart cubre el aviso de proveedor configurado/no configurado; no se pudo ejecutar porque flutter no se reconoce."
+      ],
+      "notes": "Proveedor no configurado; fallos de gateway y respuestas de red no pueden ejercitarse en esta fase."
+    },
+    "T-18": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce."
+      ],
+      "notes": "Requiere dispositivo Android para denegación/revocación de cámara y lifecycle; no disponible."
+    },
+    "T-19": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas de vencimiento y respuesta tardía añadidas; no ejecutadas por falta de Flutter/Dart."
+    },
+    "T-20": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce.",
+        "qr_shield_views_test.dart cubre el reinicio de revelación de contenido estático; flutter test test/features/qr_shield/view/qr_shield_views_test.dart falla porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas de formatos estáticos y reinicio del estado de revelación añadidas; no ejecutadas por falta de Flutter/Dart."
+    },
+    "T-21": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas de esquemas y controles añadidas; no ejecutadas por falta de Flutter/Dart."
+    },
+    "T-22": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce.",
+        "qr_shield_views_test.dart comprueba que el preview de candidatos redacta un parámetro token reconocible; no se pudo ejecutar porque flutter no se reconoce."
+      ],
+      "notes": "Pruebas locales de host/secretos añadidas; gateway/body de 16 KiB no existe en el árbol revisado."
+    },
+    "T-23": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Intento real: flutter test test; el comando falla porque flutter no se reconoce."
+      ],
+      "notes": "Gateway, proveedor y captura de tráfico/logs no existen en este alcance."
+    },
+    "T-24": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-25": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-26": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    },
+    "T-27": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Revisión estática añadió objetivos de toque de 48 dp, soporte de desplazamiento con texto ampliado y etiquetas semánticas para el marco QR; no demuestra TalkBack, contraste ni escala 200 % real.",
+        "No hay Flutter/Dart ni dispositivo Android para ejecutar la matriz de accesibilidad."
+      ],
+      "notes": "Cambios de presentación aplicados; la validación dinámica de TalkBack, escala, contraste y tareas críticas requiere SDK y matriz física."
+    },
+    "T-28": {
+      "status": "NOT_RUN",
+      "evidence": [],
+      "notes": "No ejecutado en este alcance. Las pruebas específicas de QR se añadieron, pero Flutter/Dart no están disponibles; otros módulos o artefactos de lanzamiento no forman parte de esta rama."
+    }
+  },
+  "acceptance_gates": {
+    "AC-01": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "El MVP global incluye SENTINEL, Guardian, gateway, landing y APK; no están implementados/probados en esta rama."
+    },
+    "AC-02": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "Guardian y SENTINEL no pertenecen al módulo QR ni están disponibles para esta validación."
+    },
+    "AC-03": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "Escudo QR F4a es parcial; falta verificación dinámica, estado positivo del proveedor real y validación Android."
+    },
+    "AC-04": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "El repositorio de reputación no está configurado; fallos de gateway/caché no se han probado."
+    },
+    "AC-05": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "No se ha ejercitado tráfico real, consentimiento de proveedor ni pruebas de eliminación en dispositivo."
+    },
+    "AC-06": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "Proveedor Web Risk real, términos, cuota/presupuesto y gateway no configurados."
+    },
+    "AC-07": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "No hay matriz de dispositivos, TalkBack, escala 200 %, landing ni estudio de comprensión."
+    },
+    "AC-08": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "No hay APK de release firmado, hash publicado, canal HTTPS ni prueba de instalación/actualización."
+    },
+    "AC-09": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "Copy local revisado estáticamente; landing y artefactos de distribución no se han evaluado."
+    },
+    "AC-10": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "Pruebas/análisis dinámicos no ejecutados; Flutter/Dart ausentes en el entorno."
+    },
+    "AC-11": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "Derechos de activos y condiciones de publicación no evaluados en este cambio."
+    },
+    "AC-12": {
+      "status": "BLOCKED",
+      "evidence": [
+        "Inspección del árbol y estado Git; ver informe QA QR Shield."
+      ],
+      "notes": "No hay responsable operativo, runbook, monitoreo ni proceso de retirada implementados."
+    }
+  }
+}

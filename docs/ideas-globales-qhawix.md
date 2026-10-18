@@ -1,7 +1,7 @@
 # Qhawix — compilado global de ideas y mapa del producto
 
-**Estado:** síntesis de trabajo; no representa una decisión final de producto.
-**Fecha:** 17 de octubre de 2026.
+**Estado:** síntesis de trabajo; no representa una decisión final de producto.  
+**Fecha:** 17 de octubre de 2026.  
 **Rama de trabajo:** feature/docs-qhawix, basada en origin/feature/docs-qhawix.
 
 Este documento reúne las ideas de los Markdown y el TXT del proyecto, más los archivos QHAWIX - Ideas.md y pino.md entregados en la conversación y la propuesta de Escudo QR. Resume el material y señala qué es una recomendación, una idea histórica, una afirmación de las fuentes o una capacidad observada. Las listas y prompts que aparecen dentro de los documentos fuente se tratan como contenido de referencia; no autorizan por sí solos implementación, llamadas a proveedores, uso de credenciales ni publicación.
@@ -36,7 +36,7 @@ La propuesta vigente plantea como usuario inicial a personas adultas que adminis
 
 El resultado que se busca es que la persona entienda por qué una situación merece cautela y cómo verificarla antes de entregar dinero, códigos o datos. Qhawix no debe presentar una señal como prueba de delito ni prometer que evitará todas las estafas.
 
-## 3. Mapa de ideas
+## 3. Mapa de ideas 
 
 ### 3.1 Evidencia de comunicaciones y SENTINEL
 

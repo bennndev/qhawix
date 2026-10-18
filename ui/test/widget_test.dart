@@ -1,30 +1,62 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:qhawix/main.dart';
+import 'package:qhawix/app/qhawix_app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('existing shell opens the QR module without starting the camera', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const QhawixApp(forceDisableAnimations: true));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Tu vigía'), findsOneWidget);
+    await tester.tap(find.text('Analizar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Escudo QR'), findsOneWidget);
+    await tester.tap(find.text('Escudo QR'));
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.byKey(const Key('open-scanner')), findsOneWidget);
+    expect(find.byKey(const Key('activate-camera')), findsNothing);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byKey(const Key('qr-payload-input')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('qr-payload-input')));
+    await tester.enterText(
+      find.byKey(const Key('qr-payload-input')),
+      'https://shop.example.org/menu',
+    );
+    await tester.ensureVisible(find.byKey(const Key('inspect-pasted-content')));
+    await tester.tap(find.byKey(const Key('inspect-pasted-content')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Revisión del QR'), findsOneWidget);
+    expect(find.text('shop.example.org'), findsOneWidget);
+    expect(find.text('Sospechoso o no verificable'), findsOneWidget);
+    expect(find.text('Sin amenazas detectadas'), findsNothing);
+    expect(find.byKey(const Key('open-external-url')), findsNothing);
+    expect(
+      find.textContaining('Enlace bloqueado: no se pudo confirmar'),
+      findsOneWidget,
+    );
+    expect(find.text('Antes de abrir'), findsNothing);
+
+    await tester.tap(find.byTooltip('Volver a Escudo QR'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('qr-payload-input')));
+    await tester.enterText(
+      find.byKey(const Key('qr-payload-input')),
+      'WIFI:T:WPA;S:casa;P:secreto;;',
+    );
+    await tester.ensureVisible(find.byKey(const Key('inspect-pasted-content')));
+    await tester.tap(find.byKey(const Key('inspect-pasted-content')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Datos de red Wi-Fi'), findsOneWidget);
+    expect(
+      find.textContaining('puede incluir datos personales'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('secreto'), findsNothing);
+    expect(find.byKey(const Key('open-external-url')), findsNothing);
   });
 }

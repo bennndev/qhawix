@@ -198,6 +198,8 @@ flutter run --dart-define-from-file=env/local.json
 
 `ui/env/local.json` está ignorado por Git. La clave anónima de Supabase es pública por diseño; las claves de proveedores nunca van en la app ni en el repositorio.
 
+Para configurar la reputación real de Escudo QR con Web Risk Lookup, sigue [la guía de configuración](docs/QR-WEB-RISK-SETUP.md). La clave de Google se guarda como secreto de la Edge Function; nunca se añade a `ui/env/local.json`.
+
 > Verificado sobre el esqueleto: `dart analyze`, `flutter test` y la versión del CLI de Supabase. `supabase start` y `functions serve` no se probaron.
 
 ## Hoja de ruta
