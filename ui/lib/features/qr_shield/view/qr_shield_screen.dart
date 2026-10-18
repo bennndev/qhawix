@@ -31,7 +31,6 @@ class _QrShieldScreenState extends State<QrShieldScreen> {
   @override
   Widget build(BuildContext context) {
     final space = context.space;
-    final viewModel = context.watch<QrShieldViewModel>();
 
     return Scaffold(
       appBar: QhawixAppBar(title: 'Escudo QR'),
@@ -70,23 +69,6 @@ class _QrShieldScreenState extends State<QrShieldScreen> {
                       icon: Icons.qr_code_scanner,
                       onPressed: () => context.push('/m/qr-shield/scanner'),
                     ),
-                    SizedBox(height: space.sm),
-                    SecondaryButton(
-                      label: 'Elegir una imagen',
-                      icon: Icons.image_search_outlined,
-                      onPressed: viewModel.isSelectingImage ? null : _pickImage,
-                    ),
-                    if (viewModel.isSelectingImage) ...[
-                      SizedBox(height: space.sm),
-                      const Center(child: CircularProgressIndicator()),
-                    ],
-                    if (viewModel.imageScanMessage case final message?) ...[
-                      SizedBox(height: space.sm),
-                      StatusBanner(
-                        message: message,
-                        kind: StatusBannerKind.caution,
-                      ),
-                    ],
                   ],
                 ),
                 SizedBox(height: space.md),
@@ -142,21 +124,5 @@ class _QrShieldScreenState extends State<QrShieldScreen> {
 
     context.read<QrShieldViewModel>().inspect(payload);
     context.push('/m/qr-shield/review');
-  }
-
-  Future<void> _pickImage() async {
-    final action = await context
-        .read<QrShieldViewModel>()
-        .inspectPickedImage();
-    if (!mounted) return;
-
-    switch (action) {
-      case QrImageScanAction.review:
-        context.push('/m/qr-shield/review');
-      case QrImageScanAction.chooseCandidate:
-        context.push('/m/qr-shield/candidates');
-      case QrImageScanAction.cancelled:
-        break;
-    }
   }
 }
