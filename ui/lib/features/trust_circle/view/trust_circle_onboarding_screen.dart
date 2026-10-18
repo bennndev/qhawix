@@ -54,7 +54,12 @@ class _TrustCircleOnboardingScreenState
             'Para avisarte de alertas de tu círculo cuando la app no está '
             'abierta. Es opcional.',
         bullets: const [
-          'No leemos tu agenda: eliges un contacto con el selector del sistema.',
+          'Usamos notificaciones para avisarte de alertas de tu círculo, incluso '
+              'si la app no está abierta.',
+          'Este permiso solo permite mostrar notificaciones; no activa el '
+              'acceso a tus contactos, mensajes ni ubicación.',
+          'Si no las permites, puedes usar el círculo igual, pero no recibirás '
+              'avisos cuando la app no esté abierta.',
         ],
         onContinue: _busy ? () {} : _requestNotifications,
         onNotNow: () => setState(() => _step = 2),
