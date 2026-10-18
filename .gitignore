@@ -11,3 +11,9 @@ CLAUDE.local.md
 
 # Local skill registry (generated per machine)
 .atl/
+ui/android/key.properties
+ui/android/**/*.jks
+ui/android/**/*.keystore
+
+# Local OAuth and Flutter run configuration
+ui/env/local.json
