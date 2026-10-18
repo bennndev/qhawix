@@ -31,6 +31,8 @@ class MethodChannelSafeZonePlatform implements SafeZonePlatform {
   static const testPrefix = 'Prueba';
 
   final MethodChannel _channel;
+  // Retained for API compatibility; not subscribed while this is a placeholder.
+  // ignore: unused_field
   final EventChannel _events;
   final bool _isAndroid;
 
@@ -146,13 +148,10 @@ class MethodChannelSafeZonePlatform implements SafeZonePlatform {
 
   @override
   Stream<SafeZoneEvent> get events {
+    // Do not attach to the EventChannel while this placeholder has no native
+    // peer (MissingPluginException on listen). The package-based adapter will
+    // own events. Method calls still go through [_call] and map to unavailable.
     if (!_isAndroid) return const Stream.empty();
-    return _events
-        .receiveBroadcastStream()
-        .map((e) => SafeZoneMapper.eventFromWire(SafeZoneMapper.asMap(e)))
-        .handleError((Object e) {
-          // A broken event stream must not crash the app: the status is
-          // re-read from `getStatus` anyway.
-        }, test: (e) => e is PlatformException);
+    return const Stream.empty();
   }
 }
