@@ -6,6 +6,7 @@ import '../theme/theme_extensions.dart';
 enum QhawixTab {
   inicio('Inicio', Icons.home_outlined, Icons.home),
   analizar('Analizar', Icons.document_scanner_outlined, Icons.document_scanner),
+  refugio('Refugio', Icons.shield_outlined, Icons.shield),
   red('Red', Icons.group_outlined, Icons.group),
   bitacora('Bitácora', Icons.menu_book_outlined, Icons.menu_book);
 

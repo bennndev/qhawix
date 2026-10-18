@@ -50,7 +50,10 @@ class ModuleOnboardingScreen extends StatelessWidget {
                         StatusBanner(message: entry.limitNote!),
                         SizedBox(height: space.md),
                       ],
-                      Text('Permisos de este módulo', style: context.text.titleMedium),
+                      Text(
+                        'Permisos de este módulo',
+                        style: context.text.titleMedium,
+                      ),
                       SizedBox(height: space.sm),
                       Text(
                         'QHAWIX pide cada permiso aquí, no al abrir la app. '
@@ -108,10 +111,9 @@ class ModuleOnboardingScreen extends StatelessWidget {
                           SizedBox(height: space.sm),
                         ],
                       StatusBanner(
-                        message:
-                            'Los diálogos del sistema se pedirán cuando la función '
-                            'esté lista en este módulo. Hoy este paso deja claro qué '
-                            'se pedirá y abre la pantalla del módulo.',
+                        message: entry.id == AppModuleId.qrShield
+                            ? 'La cámara solo se solicita cuando inicias el escaneo. También puedes revisar una imagen o pegar contenido sin activar la cámara.'
+                            : 'Los permisos se pedirán cuando uses la función correspondiente. Este paso explica para qué se usarán y abre el módulo.',
                       ),
                     ],
                   ),

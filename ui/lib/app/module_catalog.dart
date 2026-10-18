@@ -5,6 +5,7 @@ enum AppModuleId {
   sentinel,
   qrShield,
   echoTrap,
+  refuge,
   trustCircle,
   logbook,
   aura,
@@ -97,6 +98,52 @@ abstract final class ModuleCatalog {
         ModulePermissionNeed(
           title: 'Notificaciones',
           why: 'Muestra que la detección está activa.',
+        ),
+        ModulePermissionNeed(
+          title: 'SMS',
+          why:
+              'Solo si una llamada se marca como estafa: avisa a tus contactos de confianza.',
+        ),
+      ],
+    ),
+    ModuleCatalogEntry(
+      id: AppModuleId.refuge,
+      name: 'Refugio',
+      purpose:
+          'Zona segura: SMS a tu círculo si estás lejos de casa a deshora.',
+      icon: Icons.shield_outlined,
+      routePath: '/refugio',
+      usesOwnOnboarding: true,
+      skipActivationGate: true,
+      limitNote: 'También pide inicio automático en algunos teléfonos.',
+      permissions: [
+        ModulePermissionNeed(
+          title: 'Ubicación (todo el tiempo)',
+          why: 'Para saber si saliste de tu zona de casa, con la app cerrada.',
+          opensSystemSettings: true,
+        ),
+        ModulePermissionNeed(
+          title: 'SMS',
+          why: 'Envía la alerta desde tu propio celular a tus contactos.',
+        ),
+        ModulePermissionNeed(
+          title: 'Notificaciones',
+          why: 'Cuenta regresiva y avisos antes de enviar.',
+        ),
+        ModulePermissionNeed(
+          title: 'Alarmas exactas',
+          why: 'Revisa la ventana horaria aunque la app esté cerrada.',
+        ),
+        ModulePermissionNeed(
+          title: 'Sin optimización de batería',
+          why: 'Reduce que el sistema detenga las alertas.',
+          opensSystemSettings: true,
+        ),
+        ModulePermissionNeed(
+          title: 'Inicio automático (fabricante)',
+          why:
+              'En Honor, Xiaomi y otros, sin esto el SMS en segundo plano falla.',
+          opensSystemSettings: true,
         ),
       ],
     ),

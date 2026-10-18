@@ -12,6 +12,7 @@ class AppShell extends StatelessWidget {
   static const _tabs = <QhawixTab>[
     QhawixTab.inicio,
     QhawixTab.analizar,
+    QhawixTab.refugio,
     QhawixTab.red,
     QhawixTab.bitacora,
   ];

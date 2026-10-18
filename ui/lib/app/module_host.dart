@@ -25,6 +25,7 @@ Widget moduleScreenFor(ModuleCatalogEntry entry) {
       return const AuraScreen();
     case AppModuleId.privacy:
       return const PrivacyScreen();
+    case AppModuleId.refuge:
     case AppModuleId.trustCircle:
     case AppModuleId.logbook:
       return ModulePlaceholderScreen(entry: entry);

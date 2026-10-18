@@ -4,6 +4,7 @@ import '../core/widgets/guardian_mascot/guardian_mascot.dart';
 import '../core/widgets/module_card.dart';
 import '../core/widgets/page_header.dart';
 import '../core/widgets/qhawix_app_bar.dart';
+import 'authentication_gate.dart';
 import 'module_catalog.dart';
 import 'module_navigation.dart';
 
@@ -16,7 +17,18 @@ class HomeScreen extends StatelessWidget {
     final space = context.space;
     final colors = context.qColors;
     return Scaffold(
-      appBar: QhawixAppBar(title: 'QHAWIX', automaticallyImplyLeading: false),
+      appBar: QhawixAppBar(
+        title: 'QHAWIX',
+        automaticallyImplyLeading: false,
+        actions: [
+          if (hasQhawixSession)
+            QhawixAction(
+              icon: Icons.logout,
+              tooltip: 'Cerrar sesión',
+              onPressed: signOutOfQhawix,
+            ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(

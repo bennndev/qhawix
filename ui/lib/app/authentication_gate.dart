@@ -3,6 +3,30 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// True when the person is signed in (false in previews and tests, where
+/// Supabase is not initialized).
+bool get hasQhawixSession {
+  try {
+    return Supabase.instance.client.auth.currentSession != null;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Ends the session; [AuthenticationGate] then shows the sign-in screen.
+Future<void> signOutOfQhawix() async {
+  try {
+    await Supabase.instance.client.auth.signOut();
+  } catch (_) {
+    // Nothing to close when there is no configured session.
+  }
+}
+
+/// The gate sits above the Navigator, so its screens bring their own Overlay
+/// (needed by text selection, paste and tooltips).
+Widget _withOverlay(Widget child) =>
+    Overlay(initialEntries: [OverlayEntry(builder: (_) => child)]);
+
 /// Keeps the QHAWIX shell behind one sign-in screen.
 class AuthenticationGate extends StatefulWidget {
   const AuthenticationGate({super.key, required this.child});
@@ -41,8 +65,8 @@ class _AuthenticationGateState extends State<AuthenticationGate> {
   @override
   Widget build(BuildContext context) {
     final client = _client;
-    if (client == null) return const _AccessUnavailableScreen();
-    if (!_hasSession) return _SignInScreen(client: client);
+    if (client == null) return _withOverlay(const _AccessUnavailableScreen());
+    if (!_hasSession) return _withOverlay(_SignInScreen(client: client));
     return widget.child;
   }
 }

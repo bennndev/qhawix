@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_theme.dart';
+import '../features/qr_shield/qr_shield_providers.dart';
+import '../features/refuge/refuge_providers.dart';
 import '../features/trust_circle/trust_circle_providers.dart';
 import 'authentication_gate.dart';
 import 'app_router.dart';
@@ -39,6 +41,8 @@ class _QhawixAppState extends State<QhawixApp> {
       providers: [
         ChangeNotifierProvider(create: (_) => ModuleActivationStore()),
         ...trustCircleProviders(),
+        ...refugeProviders(),
+        ...qrShieldProviders(),
       ],
       child: MaterialApp.router(
         title: 'QHAWIX',
