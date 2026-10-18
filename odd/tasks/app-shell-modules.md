@@ -10,7 +10,7 @@ Branch: `feature/ui`. Test runner: `cd ui && dart analyze && flutter test`. Deli
 - S4. UI copy neutral Spanish; code/commits English. No edits under `lovable/`.
 
 ## Tasks
-- [x] T1 (S1–S4): app shell, router, home/analyze module menus, generic module onboarding, wire existing Refuge/Trust Circle/stubs — route: inline — commit pending
+- [x] T1 (S1–S4): app shell, router, home/analyze module menus, generic module onboarding, wire existing Refuge/Trust Circle/stubs — route: inline — `6d2e2ff`
 - [ ] T2: device check of the shell on the Honor — when owner reconnects
 
 ## Log
