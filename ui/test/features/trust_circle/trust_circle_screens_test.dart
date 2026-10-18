@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qhawix/core/widgets/guardian_mascot/guardian_mascot.dart';
 import 'package:qhawix/core/widgets/mock_data_banner.dart';
-import 'package:qhawix/core/widgets/toggle_row.dart';
 import 'package:qhawix/features/trust_circle/domain/alert_preferences.dart';
 import 'package:qhawix/features/trust_circle/domain/check_in.dart';
 import 'package:qhawix/features/trust_circle/domain/contact_picker_port.dart';
@@ -12,8 +11,6 @@ import 'package:qhawix/features/trust_circle/view/alert_preferences_screen.dart'
 import 'package:qhawix/features/trust_circle/view/check_in_screen.dart';
 import 'package:qhawix/features/trust_circle/view/contact_detail_screen.dart';
 import 'package:qhawix/features/trust_circle/view/family_keyword_screen.dart';
-import 'package:qhawix/features/trust_circle/view/refuge_requests_screen.dart';
-import 'package:qhawix/features/trust_circle/view/refuge_verification_screen.dart';
 import 'package:qhawix/features/trust_circle/view/sos_screen.dart';
 import 'package:qhawix/features/trust_circle/view/trust_circle_screen.dart';
 
@@ -24,11 +21,6 @@ const _tall = Size(360, 6000);
 final _pickButton = find.widgetWithText(FilledButton, 'Elegir de contactos');
 final _manualAddButton = find.widgetWithText(FilledButton, 'Agregar contacto');
 
-final _remoteRefugeRow = find.ancestor(
-  of: find.text('Puede pedir mi Refugio'),
-  matching: find.byType(ToggleRow),
-);
-
 final _screens = <String, Widget Function()>{
   'overview': () => const TrustCircleScreen(),
   'add contact': () => const AddContactScreen(),
@@ -36,8 +28,6 @@ final _screens = <String, Widget Function()>{
   'alert preferences': () => const AlertPreferencesScreen(),
   'SOS': () => const SosScreen(),
   'check-in': () => const CheckInScreen(),
-  'refuge requests': () => const RefugeRequestsScreen(),
-  'refuge verification': () => const RefugeVerificationScreen(requestId: 'r1'),
   'family keyword': () => const FamilyKeywordScreen(),
 };
 
@@ -107,7 +97,6 @@ void main() {
       expect(find.text('En pausa'), findsOneWidget);
       expect(find.text('Con la app'), findsNWidgets(2));
       expect(find.text('Sin la app'), findsNWidgets(2));
-      expect(find.text('3 de 4 activos'), findsOneWidget);
     });
 
     testWidgets('has no waiting-for-acceptance wording for contacts', (
@@ -120,11 +109,9 @@ void main() {
       expect(find.text('Invitación a instalar pendiente'), findsOneWidget);
     });
 
-    testWidgets('shows the request waiting and the quick actions', (
-      tester,
-    ) async {
+    testWidgets('shows the quick actions', (tester) async {
       await pumpModule(tester, const TrustCircleScreen(), size: _tall);
-      expect(find.text('1 solicitud de Refugio'), findsOneWidget);
+      expect(find.textContaining('solicitud de Refugio'), findsNothing);
       for (final label in [
         'SOS',
         'Llegada segura',
@@ -285,20 +272,17 @@ void main() {
       );
     });
 
-    testWidgets(
-      'an app contact can ask for Refuge and is not offered the invite',
-      (tester) async {
-        await pumpModule(
-          tester,
-          const ContactDetailScreen(contactId: 'c1'),
-          size: _tall,
-        );
-        final row = tester.widget<ToggleRow>(_remoteRefugeRow);
-        expect(row.onChanged, isNotNull);
-        expect(row.value, isTrue);
-        expect(find.text('Invitar a instalar QHAWIX'), findsNothing);
-      },
-    );
+    testWidgets('an app contact is not offered the install invite', (
+      tester,
+    ) async {
+      await pumpModule(
+        tester,
+        const ContactDetailScreen(contactId: 'c1'),
+        size: _tall,
+      );
+      expect(find.text('Puede pedir mi Refugio'), findsNothing);
+      expect(find.text('Invitar a instalar QHAWIX'), findsNothing);
+    });
 
     testWidgets('a phone-only contact offers SMS and WhatsApp only', (
       tester,
@@ -321,24 +305,17 @@ void main() {
       expect(viewModelOf(tester).contactById('c2')!.channel, AlertChannel.sms);
     });
 
-    testWidgets(
-      'remote Refuge is off and disabled with its reason and the invite',
-      (tester) async {
-        await pumpModule(
-          tester,
-          const ContactDetailScreen(contactId: 'c2'),
-          size: _tall,
-        );
-        final row = tester.widget<ToggleRow>(_remoteRefugeRow);
-        expect(row.value, isFalse);
-        expect(row.onChanged, isNull);
-        expect(
-          find.text('Necesita la app: sin ella no puede pedirlo.'),
-          findsOneWidget,
-        );
-        expect(find.text('Invitar a instalar QHAWIX'), findsOneWidget);
-      },
-    );
+    testWidgets('a phone-only contact is offered the install invite', (
+      tester,
+    ) async {
+      await pumpModule(
+        tester,
+        const ContactDetailScreen(contactId: 'c2'),
+        size: _tall,
+      );
+      expect(find.text('Puede pedir mi Refugio'), findsNothing);
+      expect(find.text('Invitar a instalar QHAWIX'), findsOneWidget);
+    });
 
     testWidgets('the optional invite stays honest and then shows as pending', (
       tester,
@@ -399,7 +376,7 @@ void main() {
   });
 
   group('alert preferences', () {
-    testWidgets('states the delivery limit and lists the three events', (
+    testWidgets('states the delivery limit and lists the voice-clone event', (
       tester,
     ) async {
       await pumpModule(tester, const AlertPreferencesScreen(), size: _tall);
@@ -407,40 +384,37 @@ void main() {
         find.textContaining('depende de que tu contacto tenga la app'),
         findsOneWidget,
       );
-      for (final title in [
-        'Voz clonada detectada',
-        'Pago retenido',
-        'Refugio activado',
-      ]) {
-        expect(find.text(title), findsOneWidget);
-      }
+      expect(find.text('Voz clonada detectada'), findsOneWidget);
+      expect(find.text('Pago retenido'), findsNothing);
+      expect(find.text('Refugio activado'), findsNothing);
     });
 
     testWidgets('toggles who hears about an event', (tester) async {
       await pumpModule(tester, const AlertPreferencesScreen(), size: _tall);
       final vm = viewModelOf(tester);
-      expect(vm.alertPreferences.recipientsOf(AlertEventKind.paymentHold), {
-        'c1',
-      });
-      await tester.ensureVisible(find.text('Mamá (ejemplo)').at(1));
-      await tester.tap(find.text('Mamá (ejemplo)').at(1));
+      expect(
+        vm.alertPreferences.recipientsOf(AlertEventKind.voiceCloneDetected),
+        {'c1', 'c2'},
+      );
+      await tester.ensureVisible(find.text('Mamá (ejemplo)').first);
+      await tester.tap(find.text('Mamá (ejemplo)').first);
       await tester.pumpAndSettle();
-      expect(vm.alertPreferences.recipientsOf(AlertEventKind.paymentHold), {
-        'c1',
-        'c2',
-      });
+      expect(
+        vm.alertPreferences.recipientsOf(AlertEventKind.voiceCloneDetected),
+        {'c1'},
+      );
     });
 
     testWidgets('lets a phone-only contact be a recipient and says how', (
       tester,
     ) async {
       await pumpModule(tester, const AlertPreferencesScreen(), size: _tall);
-      expect(find.text('Mamá (ejemplo)'), findsNWidgets(3));
+      expect(find.text('Mamá (ejemplo)'), findsOneWidget);
       expect(
         find.text(
           'Sin la app: SMS o WhatsApp que envías tú desde tu teléfono.',
         ),
-        findsNWidgets(6),
+        findsNWidgets(2),
       );
     });
 
@@ -576,45 +550,6 @@ void main() {
       await _tapText(tester, 'Confirmar que llegué');
       expect(find.text('Llegada confirmada'), findsWidgets);
       expect(viewModelOf(tester).checkInStatus, CheckInStatus.confirmed);
-    });
-  });
-
-  group('remote Refuge requests', () {
-    testWidgets('lists the request and always offers to deny', (tester) async {
-      await pumpModule(tester, const RefugeRequestsScreen(), size: _tall);
-      expect(find.text('Ana Ejemplo pide activar tu Refugio'), findsOneWidget);
-      expect(find.text('Rechazar solicitud'), findsOneWidget);
-    });
-
-    testWidgets('denying answers honestly and clears the request', (
-      tester,
-    ) async {
-      await pumpModule(tester, const RefugeRequestsScreen(), size: _tall);
-      await _tapText(tester, 'Rechazar solicitud');
-      expect(
-        find.textContaining('solicitud rechazada en la demostración'),
-        findsOneWidget,
-      );
-      expect(find.text('Sin solicitudes pendientes'), findsOneWidget);
-    });
-
-    testWidgets('approving goes through the verification placeholder', (
-      tester,
-    ) async {
-      await pumpModule(tester, const RefugeRequestsScreen(), size: _tall);
-      await _tapText(tester, 'Verificar y aprobar');
-      expect(
-        find.textContaining('La verificación se agregará aquí'),
-        findsOneWidget,
-      );
-      expect(viewModelOf(tester).pendingRequests, hasLength(1));
-      expect(find.text('Rechazar solicitud'), findsOneWidget);
-      await _tapText(tester, 'Aprobar (ejemplo)');
-      expect(
-        find.textContaining('no se activó ningún Refugio'),
-        findsOneWidget,
-      );
-      expect(viewModelOf(tester).pendingRequests, isEmpty);
     });
   });
 

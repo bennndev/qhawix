@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/widgets/list_row.dart';
-import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/qhawix_buttons.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../../core/widgets/status_banner.dart';
-import '../../../core/widgets/summary_panel.dart';
 import '../domain/check_in.dart';
-import '../domain/trust_contact.dart';
 import '../viewmodel/family_keyword_view_model.dart';
 import '../viewmodel/trust_circle_view_model.dart';
 import 'add_contact_screen.dart';
@@ -19,13 +16,11 @@ import 'contact_detail_screen.dart';
 import 'contact_row.dart';
 import 'family_keyword_screen.dart';
 import 'labels.dart';
-import 'refuge_requests_screen.dart';
 import 'sos_screen.dart';
 import 'trust_circle_onboarding_screen.dart';
 import 'trust_circle_scaffold.dart';
 
-/// Entry screen of the Red de Confianza module: circle status, contacts and
-/// their consent state, quick actions and the requests waiting for the person.
+/// Entry screen of the Red de Confianza module.
 class TrustCircleScreen extends StatelessWidget {
   const TrustCircleScreen({super.key});
 
@@ -55,85 +50,17 @@ class TrustCircleScreen extends StatelessWidget {
       return const TrustCircleOnboardingScreen();
     }
     final contacts = vm.contacts;
-    final active = contacts.where((c) => c.isActive).length;
-    final withApp = contacts.where((c) => c.hasApp).length;
-    final paused = contacts
-        .where((c) => c.status == ContactStatus.paused)
-        .length;
     return TrustCircleScaffold(
       title: 'Red de Confianza',
       children: [
-        const PageHeader(
-          title: 'Tu red de confianza',
-          subtitle:
-              'Personas que elegiste para avisarles y coordinar contigo. '
-              'No necesitan tener la app.',
-        ),
-        SummaryPanel(
-          icon: Icons.group_outlined,
-          label: 'Estado del círculo',
-          value: '$active de ${contacts.length} activos',
-          caption:
-              '$withApp con la app · ${contacts.length - withApp} sin la app · '
-              '$paused en pausa',
-        ),
-        if (vm.pendingRequests.isNotEmpty)
-          SectionCard(
-            title: 'Esperan tu respuesta',
-            children: [
-              ListRow(
-                leadingIcon: Icons.shield_outlined,
-                title: vm.pendingRequests.length == 1
-                    ? '1 solicitud de Refugio'
-                    : '${vm.pendingRequests.length} solicitudes de Refugio',
-                subtitle: 'Pendiente: necesitas verificarte para aprobar.',
-                showDivider: false,
-                onTap: () => _open<void>(context, const RefugeRequestsScreen()),
-              ),
-            ],
-          ),
-        SectionCard(
-          title: 'Acciones rápidas',
-          children: [
-            ListRow(
-              leadingIcon: Icons.sos_outlined,
-              title: 'SOS',
-              subtitle: 'Avisa ahora a las personas que elijas.',
-              onTap: () => _open<void>(context, const SosScreen()),
-            ),
-            ListRow(
-              leadingIcon: Icons.schedule,
-              title: 'Llegada segura',
-              subtitle: _checkInSummary(vm),
-              onTap: () => _open<void>(context, const CheckInScreen()),
-            ),
-            ListRow(
-              leadingIcon: Icons.key_outlined,
-              title: 'Palabra clave familiar',
-              subtitle: context.watch<FamilyKeywordViewModel>().hasKeyword
-                  ? 'Creada. Solo tú decides cuándo verla.'
-                  : 'Aún no la creaste.',
-              onTap: () => _open<void>(context, const FamilyKeywordScreen()),
-            ),
-            ListRow(
-              leadingIcon: Icons.notifications_outlined,
-              title: 'Preferencias de alertas',
-              subtitle: 'Qué evento avisa a quién.',
-              showDivider: false,
-              onTap: () => _open<void>(context, const AlertPreferencesScreen()),
-            ),
-          ],
-        ),
         SectionCard(
           title: 'Contactos',
           children: [
             if (contacts.isEmpty)
               const EmptyState(
                 icon: Icons.group_add_outlined,
-                title: 'Aún no tienes contactos',
-                message:
-                    'Agrega a alguien de confianza eligiendo un contacto del '
-                    'teléfono. No necesita tener la app.',
+                title: 'Sin contactos',
+                message: 'Agrega a alguien de confianza desde tu teléfono.',
               )
             else
               for (var i = 0; i < contacts.length; i++)
@@ -159,22 +86,52 @@ class TrustCircleScreen extends StatelessWidget {
           icon: Icons.person_add_alt_outlined,
           onPressed: () => _open<void>(context, const AddContactScreen()),
         ),
+        SectionCard(
+          title: 'Más',
+          children: [
+            ListRow(
+              leadingIcon: Icons.sos_outlined,
+              title: 'SOS',
+              onTap: () => _open<void>(context, const SosScreen()),
+            ),
+            ListRow(
+              leadingIcon: Icons.schedule,
+              title: 'Llegada segura',
+              subtitle: _checkInSummary(vm),
+              onTap: () => _open<void>(context, const CheckInScreen()),
+            ),
+            ListRow(
+              leadingIcon: Icons.key_outlined,
+              title: 'Palabra clave familiar',
+              subtitle: context.watch<FamilyKeywordViewModel>().hasKeyword
+                  ? 'Creada'
+                  : null,
+              onTap: () => _open<void>(context, const FamilyKeywordScreen()),
+            ),
+            ListRow(
+              leadingIcon: Icons.notifications_outlined,
+              title: 'Preferencias de alertas',
+              showDivider: false,
+              onTap: () => _open<void>(context, const AlertPreferencesScreen()),
+            ),
+          ],
+        ),
         const StatusBanner(
           message:
               'QHAWIX avisa a tus contactos, pero no garantiza que alguien '
-              'responda ni que llegue una ayuda de emergencia.',
+              'responda.',
           kind: StatusBannerKind.caution,
         ),
       ],
     );
   }
 
-  static String _checkInSummary(TrustCircleViewModel vm) {
-    final style = checkInStatusStyle(vm.checkInStatus);
+  static String? _checkInSummary(TrustCircleViewModel vm) {
     final checkIn = vm.checkIn;
     if (checkIn == null || vm.checkInStatus == CheckInStatus.confirmed) {
-      return style.label;
+      return null;
     }
-    return '${style.label} · vence a las ${clockTime(checkIn.dueAt)}';
+    return '${checkInStatusStyle(vm.checkInStatus).label} · '
+        '${clockTime(checkIn.dueAt)}';
   }
 }

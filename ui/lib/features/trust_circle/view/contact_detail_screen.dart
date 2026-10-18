@@ -130,32 +130,15 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
           children: [
             ToggleRow(
               title: 'Recibir mis alertas',
-              description: 'Voz clonada, pago retenido y Refugio activado.',
+              description: 'Avisos de voz clonada y otros eventos de la app.',
               value: permissions.receiveAlerts,
+              showDivider: contact.hasApp,
               onChanged: (v) => _run(
                 () => vm.updatePermissions(
                   contact.id,
                   permissions.copyWith(receiveAlerts: v),
                 ),
               ),
-            ),
-            ToggleRow(
-              title: 'Puede pedir mi Refugio',
-              description: contact.canRequestRemoteRefuge
-                  ? 'Solo puede pedirlo: tú verificas y apruebas cada vez.'
-                  : 'Necesita la app: sin ella no puede pedirlo.',
-              value:
-                  contact.canRequestRemoteRefuge &&
-                  permissions.mayRequestRemoteRefuge,
-              showDivider: contact.hasApp,
-              onChanged: contact.canRequestRemoteRefuge
-                  ? (v) => _run(
-                      () => vm.updatePermissions(
-                        contact.id,
-                        permissions.copyWith(mayRequestRemoteRefuge: v),
-                      ),
-                    )
-                  : null,
             ),
             if (!contact.hasApp && !contact.installInvitePending)
               Align(

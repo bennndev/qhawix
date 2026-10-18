@@ -50,7 +50,9 @@ class _AlertPreferencesScreenState extends State<AlertPreferencesScreen> {
               'QHAWIX no puede garantizar que alguien lea el aviso.',
           kind: StatusBannerKind.caution,
         ),
-        for (final kind in AlertEventKind.values)
+        for (final kind in const [
+          AlertEventKind.voiceCloneDetected,
+        ])
           SectionCard(
             title: alertEventTitle(kind),
             children: [
