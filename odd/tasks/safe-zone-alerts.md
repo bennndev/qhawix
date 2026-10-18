@@ -65,3 +65,4 @@ Deep teal `#0B5D6B` as the accent; whether the AURA module keeps its name next t
 - L3: after seeing that a Kotlin engine had been planned: "Frenalo, todo debía usar Flutter, mal ahí." (S3). The Kotlin agent had written nothing.
 - L4: "Prueba para ver si las librerias pueden lograr lo que queremos" (the spike). The phone was authorized and the recipient number supplied by the owner.
 - L5: the owner moved to Cursor because Claude tokens ran out: "quiero usarlo en Cursor para que termine de implementar la feature o la determine como fallida".
+- L6 (2026-10-17 evening): owner enabled Honor App launch (auto-launch, secondary, background). Five consecutive killed-process Q7 alarms passed. Owner could not leave the building; Q2 done with adb mock GPS — 3/3 exits with real SMS SENT/DELIVERED, process dead. Verdict: **GO WITH CHANGES** (guided auto-start required; physical walk still a follow-up). SMS cap 6/6 reached. Q3/Q4 still untested.

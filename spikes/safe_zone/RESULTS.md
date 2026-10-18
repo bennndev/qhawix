@@ -2,11 +2,23 @@
 
 Date: 2026-10-17. Spike app: `spikes/safe_zone/` (package `pe.qhawix.spike`, Android only).
 
+## Verdict
+
+**GO WITH CHANGES** (2026-10-17, evening retest on the same Honor after the owner enabled App launch auto-start).
+
+| Gate | Result |
+| --- | --- |
+| Five consecutive killed-process alarms | **Pass** (5/5 Q7 location alarms, `am kill`, no SMS) |
+| Geofence exit → SMS, process dead, ≥2 of 3 | **Pass** (3/3) via **adb mock GPS** (~250 m), not a physical walk |
+| Works without OEM auto-launch | **No** — required Honor Settings → Apps → App launch (manual: auto-launch, secondary launch, run in background) |
+
+**Product implications:** keep the Flutter/pub.dev stack; add a guided per-manufacturer "Permitir inicio automático" step before monitoring can start; state honestly that mock-location geofence exits prove wiring, not street GPS latency; still document force-stop, first-unlock-after-reboot, dual-SIM, and `sent` ≠ `delivered`. **Q3 reboot and Q4 countdown/PIN over a locked phone remain untested.** Physical outdoor walks remain a follow-up when the owner can leave the building.
+
 ## Status in one paragraph
 
-Device phase run on 2026-10-17 on the real phone: **HONOR RMO-NX3 (model RMO_NX3), MagicOS 7.1.0, Android 13 (SDK 33)**, dual SIM (slot 0 in service on Claro, slot 1 out of service), Google Play services present, serial `AWYRVB3A27001174`. The APK was built with `--dart-define-from-file=spike.local.json` and installed over adb. Recipient: "the owner second phone" (number never logged or written here). **Real SMS sent: 3** (limit 6): two from Q8 (the UI button fired twice, once by an automation slip) and one from Q1. All messages start with `Prueba QHAWIX:`.
+Device phase run on 2026-10-17 on the real phone: **HONOR RMO-NX3 (model RMO_NX3), MagicOS 7.1.0, Android 13 (SDK 33)**, dual SIM (slot 0 in service on Claro, slot 1 out of service), Google Play services present, serial `AWYRVB3A27001174`. The APK was built with `--dart-define-from-file=spike.local.json` and installed over adb. Recipient: "the owner second phone" (number never logged or written here). **Real SMS sent: 6** (cap 6 for this spike session): 3 in the afternoon (Q8×2, Q1×1) plus **3 Q2 geofence-exit SMS** in the evening mock retest. All messages start with `Prueba QHAWIX:`.
 
-Headline results: SMS from the UI isolate works with `SENT` and `DELIVERED` (Q8). **A real SMS was sent from an alarm callback with the process killed (Q1 pass), but only the first alarm after a fresh install ever ran: every later alarm fired at OS level and its broadcast was dropped by the Honor startup manager** (details below, root cause unverified). The geofence registered and its ENTER callback ran, so the wiring is proven; delivery with a dead process is not yet proven. No custom Kotlin was written.
+Afternoon headline: SMS from the UI isolate works with `SENT` and `DELIVERED` (Q8); one killed-process alarm SMS worked once, then Honor dropped later broadcasts until auto-launch was allowed. Evening headline: after the owner enabled App launch, **five Q7 alarms in a row fired with the process dead**, and **three mock geofence exits each produced `SENT` and `DELIVERED` SMS** with the process dead (`am kill` verified empty `pidof` before each exit). No custom Kotlin was written.
 
 | Item | State |
 | --- | --- |
@@ -14,7 +26,8 @@ Headline results: SMS from the UI isolate works with `SENT` and `DELIVERED` (Q8)
 | `flutter test` | 1 test passes |
 | `flutter build apk --debug` | OK (151 MB, debug) |
 | Custom Kotlin written | None. Only `MainActivity.kt` from `flutter create` (unchanged) |
-| Real SMS sent | 3 of 6 |
+| Real SMS sent | 6 of 6 (cap reached) |
+| Verdict | **GO WITH CHANGES** |
 
 ## Package versions (all verified on pub.dev API and in the pub cache)
 
@@ -35,8 +48,8 @@ License findings: the five that the report left `unverified` are now verified (`
 
 | Q | Verdict | Evidence |
 | --- | --- | --- |
-| Q1 Alarm to SMS, process dead | **Partial (pass once, then blocked by the OEM)** | First alarm after install, with `am kill` verified (`pidof` empty before the alarm; pid changed from 27733 to 27958; no `app_start` line, so the UI never ran): `20:41:35 q1_alarm_scheduled ok=true in=60s`, `20:42:37.745 alarm_fired id=1`, `20:42:37.903 sms_attempt tag=Q1 alarm perm_sms=PermissionStatus.granted`, `20:42:39.929 sms_status SENT`, `20:42:40.293 sms_status DELIVERED`. `DELIVERED` arrived because the process stayed up through the 20 s grace period. Fired 2 s late (due 20:42:35). **`am force-stop` comparison:** `dumpsys alarm` listed 5 entries for the package before and **0 right after `am force-stop`**; the 60 s alarm never fired (no log line, no SMS). This is the documented Android limit: a force-stopped app loses its alarms (and geofences) until the person opens it again. See "Alarm delivery finding" below for the failures of later alarms. |
-| Q2 Geofence exit, process dead | **Partial** | Registered a 100 m circle at the phone position: `20:53:13 geofence_registered ... r=100.0` then `20:53:14.679 geofence event=enter loc=Location(<redacted>) ids=spike_home`. The ENTER arrived about 1.1 s after registration through `NativeGeofenceBroadcastReceiver` into the Dart callback, and the log write worked. **Not proven with a dead process:** in the race test (`am kill` the instant `geofence_registered` was logged) the UI process was in the foreground and was not killed (`am kill` only kills background processes; pid unchanged; no `Start proc ... for broadcast`). A second attempt with `run-as ... kill -9` failed (`unknown pid`), and re-registering the same fence did not re-fire an initial ENTER. The exit, the SMS from the geofence isolate and dead-process delivery stay in the owner checklist. |
+| Q1 Alarm to SMS, process dead | **Pass after OEM auto-launch (evening); afternoon was Partial** | Afternoon: one SMS from a killed-process alarm, then OEM block (see below). Evening after App launch enabled: **five consecutive Q7 alarms** (`alarm_fired id=2` + `loc_ok`) with `am kill` and empty `pidof` before each fire — times `21:18:37`, `21:19:18`, `21:19:57`, `21:20:35`, `21:21:13` (no SMS; location-only to save the cap). Pid changed each time (e.g. 10145→10731→11014→11315→11561→11819). Force-stop still cancels alarms (Android limit, unchanged). |
+| Q2 Geofence exit, process dead | **Pass (3/3 mock GPS exits + SMS); physical walk not done** | Afternoon: ENTER wiring only. Evening: registered 100 m home, `am kill`, then `cmd location providers` mock GPS ~250 m south (`-12.10275`). Three enter/exit cycles, process dead before each exit: `21:30:21`, `21:31:36`, `21:32:39` each logged `geofence event=exit`, `loc_ok` (acc=5.0m from mock), `sms_status SENT` and `DELIVERED` (`tag=Q2 geofence exit`). Mock provider removed after the test. **Not a street walk** — proves dead-process geofence→SMS wiring under mock location. |
 | Q3 Reboot | **Untested (`adb reboot` not allowed)** | Static only, see the BOOT_COMPLETED note below. |
 | Q4 Countdown with Cancel | **Untested** | Left for the owner: the countdown ends in an alarm, and alarm delivery was unreliable on this phone (Q1 finding), so a UI-automation run would not be conclusive. Nothing is known about the PIN screen over a locked phone. |
 | Q5 Permissions flow | **Partial** | `adb shell pm grant` worked for `ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, `SEND_SMS` and `POST_NOTIFICATIONS` on a fresh install (all `granted=true` in `dumpsys package`; `ACCESS_COARSE_LOCATION` stays false because only fine was granted). Before any grant, `dumpsys` showed `SEND_SMS` and `ACCESS_BACKGROUND_LOCATION` with the flag **`RESTRICTION_INSTALLER_EXEMPT`**: apps installed through adb are exempt from restricted settings, so **no "restricted settings" prompt appeared for this install method** (Android 15 and a sideload through a browser or file manager remain untested). The in-app `permission_handler` dialogs (step count, background-location settings page) were **not exercised**: owner checklist item 1. The battery exemption can be set by adb (`cmd deviceidle whitelist +pe.qhawix.spike`): it moved the standby bucket from 10 (active) to 5 (exempted) but did not fix alarm delivery. |
@@ -54,9 +67,7 @@ Evidence:
 - Not the standby bucket (`am get-standby-bucket` = 10, active) and not Doze (`mState=ACTIVE`). Exempting the app from battery optimization (deviceidle whitelist, bucket 5) and retesting (20:51:43) still failed. No `adb shell dumpsys alarm` entry was left pending: alarms had fired.
 - The phone is an HONOR with MagicOS 7.1 (log tags `HnAlarmManagerService`, `iaware`, `SWAP_*`, `com.hihonor.*`).
 
-Best explanation (**unverified**): the Honor/Huawei startup-by-broadcast manager refuses to start a killed app's process for a background broadcast once the app has been killed or force-stopped, unless the person allows auto-launch for it; a fresh install is allowed once. To confirm, the owner should open Settings > Apps > App launch for the spike, switch to manual management and allow auto-launch, secondary launch and run in background, then repeat Q1. If it then works, the product needs a guided "allow auto-start" step per manufacturer, and this phone is not an "it just works" case.
-
-Geofencing also delivers through a `PendingIntent` broadcast, so dead-process geofence delivery is at risk from the same OEM block until the owner tests it.
+Best explanation (**confirmed on this phone**): the Honor/Huawei startup-by-broadcast manager refuses to start a killed app's process for a background broadcast unless the person allows App launch (auto-launch / secondary launch / run in background). After the owner enabled those three, five consecutive killed-process alarms and three dead-process geofence exits all started the process and ran Dart callbacks. Fresh install still gets one free start before the policy bites. The product needs a guided "allow auto-start" step per manufacturer; this phone is not an "it just works" case.
 
 ## Build and manifest findings (these are real, verified by building)
 
@@ -88,10 +99,10 @@ The phone is already set up (app installed, permissions granted by adb). Keep th
 6. Q6: add one contact to the phone, press "Q6 elegir contacto", pick it, and note what the screen shows (name and number). Re-run `adb shell dumpsys package pe.qhawix.spike | grep -E "READ_CONTACTS|READ_SMS"`: expect no output.
 7. Optional: repeat item 2 on a Samsung or Pixel phone to separate OEM behavior from plugin behavior.
 
-SMS budget used so far: 3 of 6. Items 2 and 3 need one real SMS each; item 5 needs one more.
+SMS budget used: **6 of 6** (cap reached). No further real SMS in this spike without raising the cap.
 
 ## Recommendation
 
-**Go with changes, conditional on the OEM auto-launch test (checklist item 0).** What the device phase established: the Flutter-only stack builds and runs; SMS sending from Dart works with `SENT` and `DELIVERED` (Q8), also from a headless alarm callback with the app killed (Q1, once); `getCurrentPosition` works in a background isolate (Q7); geofence registration and the callback wiring work (Q2, ENTER); no custom Kotlin was needed.
+**GO WITH CHANGES — implement the package-based adapter in `ui/`.** Confirmed after OEM App launch: five consecutive killed-process alarms; three dead-process geofence exits with real SMS (`SENT`/`DELIVERED`) under mock GPS. Required product change: guided per-manufacturer auto-start (Honor/Huawei proven; Xiaomi/Samsung/generic copy still needed) plus battery-optimization request and honest limits (force-stop, first unlock after reboot, dual-SIM, mock≠street walk, Q3/Q4 untested).
 
-What is not proven and could force a change: **background delivery after the first kill on this Honor phone.** Alarms were not dropped by Android but the Honor startup manager refused to start the process for the broadcast, which is an OEM policy, not a plugin bug, and it affects every Flutter plugin (and the paid `flutter_background_geolocation` too, because it also needs a process start from a system broadcast). If the owner's item 0 fixes it, keep these packages and add a guided per-manufacturer "allow auto-start" step plus the battery-optimization request; if it does not, **Q1/Q2 dead-process delivery on Honor is the question that would force a fallback**, and the realistic fallback is a foreground service started by the person (visible notification), not the paid plugin. Other changes needed regardless: pin `permission_handler_android` 13.0.1 (or move to AGP 9), enable core library desugaring, handle that nothing re-registers after a reboot until the first unlock (`BOOT_COMPLETED` only), accept that `force-stop` cancels alarms and geofences until the app is opened again (document it), and plan that the person cannot choose a SIM on a dual-SIM phone with `another_telephony`.
+Still apply: pin `permission_handler_android` 13.0.1 (or move to AGP 9), core library desugaring, plain-file event log across isolates. Fallback if a later outdoor walk fails on this OEM: visible foreground service — not Resend/email, and not assumed from the paid geolocation plugin alone (it also needs a process start).
