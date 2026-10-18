@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:another_telephony/telephony.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
@@ -17,6 +16,7 @@ import '../domain/safe_zone_engine.dart';
 import '../domain/safe_zone_error.dart';
 import '../domain/safe_zone_platform.dart';
 import '../domain/safe_zone_status.dart';
+import 'refuge_sms.dart';
 import 'safe_zone_background.dart';
 import 'safe_zone_file_store.dart';
 
@@ -335,7 +335,7 @@ class PackagesSafeZonePlatform implements SafeZonePlatform {
     final body = '$testPrefix${config.smsPreview}';
     for (final r in config.recipients) {
       try {
-        await Telephony.instance.sendSms(to: r.phone, message: body);
+        await sendRefugeSms(to: r.phone, message: body);
         results.add(TestSendResult(phone: r.phone, outcome: SendOutcome.sent));
       } on Object catch (e) {
         results.add(

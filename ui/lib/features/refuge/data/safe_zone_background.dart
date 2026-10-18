@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:another_telephony/telephony.dart';
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,6 +9,7 @@ import 'package:native_geofence/native_geofence.dart';
 import '../domain/safe_zone_config.dart';
 import '../domain/safe_zone_engine.dart';
 import '../domain/safe_zone_status.dart';
+import 'refuge_sms.dart';
 import 'safe_zone_file_store.dart';
 
 /// Top-level background entry points for Refuge safe-zone monitoring.
@@ -62,10 +62,7 @@ Future<void> _sendAlertSms(
   var anySent = false;
   for (final r in config.recipients) {
     try {
-      await Telephony.backgroundInstance.sendSms(
-        to: r.phone,
-        message: body,
-      );
+      await sendRefugeSms(to: r.phone, message: body, background: true);
       anySent = true;
     } on Object catch (e) {
       await _emit(

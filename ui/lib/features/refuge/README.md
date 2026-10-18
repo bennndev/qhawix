@@ -16,9 +16,8 @@ Run it on a phone from `ui/` (real SMS):
 flutter run -t lib/dev/safe_zone_demo_main.dart
 ```
 
-> **Demo recipients:** `safe_zone_demo_main.dart` injects the Trust Circle **mock** so the wizard
-> has sample contacts. The main app uses the on-device Trust Circle store; pick real contacts there
-> before enabling monitoring.
+> **Recipients** are always the active Trust Circle contacts (on-device store). Add people in
+> Red de Confianza first; the safe-zone wizard only lets you choose among them.
 
 ## Screens
 
