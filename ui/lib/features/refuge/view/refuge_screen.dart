@@ -84,19 +84,16 @@ class _Hub extends StatelessWidget {
         child: SafeZonePage(
           children: [
             const PageHeader(
-              title: 'Alertas de zona segura',
-              subtitle:
-                  'QHAWIX envía un SMS por sí misma cuando estás lejos de casa '
-                  'en el horario que elegiste.',
+              title: 'Zona segura',
+              subtitle: 'SMS a tu red si te alejas de casa a deshora.',
             ),
             if (vm.note != null)
               NoteBanner(note: vm.note!, onDismiss: vm.dismissNote),
             _MonitoringCard(status: status, config: config),
             _HealthCard(vm: vm, status: status, config: config),
-            const StatusBanner(message: SafeZoneLabels.limits),
-            _ConfigCard(config: config, onEdit: (s) => _edit(context, s)),
-            _HistoryCard(vm: vm, now: clock.now()),
             _Actions(vm: vm, config: config),
+            _ConfigCard(config: config, onEdit: (s) => _edit(context, s)),
+            if (vm.events.isNotEmpty) _HistoryCard(vm: vm, now: clock.now()),
           ],
         ),
       ),
@@ -168,26 +165,31 @@ class _HealthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final space = context.space;
     final perms = status.permissions;
+    final missing = [
+      for (final kind in PermissionKind.values)
+        if (!perms.isGranted(kind)) kind,
+    ];
+    if (status.playServicesAvailable && missing.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return QhawixCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Estado de los permisos', style: context.text.titleMedium),
+          Text('Falta configurar', style: context.text.titleMedium),
           SizedBox(height: space.sm),
           if (!status.playServicesAvailable)
             Padding(
               padding: EdgeInsets.only(bottom: space.sm),
               child: const StatusBanner(
                 kind: StatusBannerKind.error,
-                message:
-                    'Falta Google Play Services: sin él no se puede vigilar '
-                    'la zona de casa.',
+                message: 'Sin Google Play Services no se puede vigilar la zona.',
               ),
             ),
-          for (final kind in PermissionKind.values)
+          for (final kind in missing)
             _HealthRow(
               kind: kind,
-              granted: perms.isGranted(kind),
+              granted: false,
               advice:
                   kind == PermissionKind.batteryOptimization ||
                   (kind == PermissionKind.notifications &&
@@ -350,47 +352,37 @@ class _HistoryCard extends StatelessWidget {
         children: [
           Text('Últimos eventos', style: context.text.titleMedium),
           SizedBox(height: space.sm),
-          if (vm.events.isEmpty)
-            Text('Todavía no hay eventos.', style: muted)
-          else
-            for (final e in vm.events.take(10))
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: space.xs),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      SafeZoneLabels.eventIcon(e.type),
-                      size: space.iconMd,
-                      color: context.qColors.accentDeep,
+          for (final e in vm.events.take(5))
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: space.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    SafeZoneLabels.eventIcon(e.type),
+                    size: space.iconMd,
+                    color: context.qColors.accentDeep,
+                  ),
+                  SizedBox(width: space.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          SafeZoneLabels.eventTitle(e.type),
+                          style: context.text.bodyMedium,
+                        ),
+                        Text(
+                          '${SafeZoneLabels.when(e.at, now)}'
+                          '${e.test ? ' · prueba' : ''}',
+                          style: muted,
+                        ),
+                      ],
                     ),
-                    SizedBox(width: space.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            SafeZoneLabels.eventTitle(e.type),
-                            style: context.text.bodyMedium,
-                          ),
-                          Text(
-                            '${SafeZoneLabels.when(e.at, now)}'
-                            '${e.test ? ' · prueba' : ''}'
-                            '${e.detail == null ? '' : ' · ${e.detail}'}',
-                            style: muted,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-          SizedBox(height: space.sm),
-          Text(
-            'Muestra los eventos recibidos con la app abierta y el último que '
-            'guardó el teléfono.',
-            style: muted,
-          ),
+            ),
         ],
       ),
     );
@@ -447,20 +439,13 @@ class _Actions extends StatelessWidget {
                     label: _nameFor(config, r.phone),
                     value: SafeZoneLabels.sendOutcome(r.outcome),
                   ),
-                Text(
-                  'Entregado a la red del operador no confirma que la persona '
-                  'lo haya recibido: pregúntale.',
-                  style: context.text.bodySmall?.copyWith(
-                    color: context.qColors.onSurfaceMuted,
-                  ),
-                ),
               ],
             ),
           ),
         ],
         SizedBox(height: space.sm),
         SecondaryButton(
-          label: 'Probar el proceso completo',
+          label: 'Probar alerta completa',
           icon: Icons.route_outlined,
           onPressed: busy
               ? null

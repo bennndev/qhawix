@@ -108,26 +108,14 @@ class IntroStep extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const PageHeader(
-        title: 'Alertas de zona segura',
+        title: 'Zona segura',
         subtitle:
-            'Si estás lejos de casa a la hora que tú elijas, QHAWIX envía un '
-            'SMS a las personas que elijas, aunque la app esté cerrada.',
+            'Si te alejas de casa a deshora, enviamos un SMS a tu red. '
+            'Todo queda en este teléfono.',
       ),
       SizedBox(height: context.space.lg),
-      Text('Lo que debes saber', style: context.text.titleMedium),
-      SizedBox(height: context.space.sm),
-      const _Bullet(
-        'Android puede tardar varios minutos en detectar que saliste.',
-      ),
-      const _Bullet(
-        'El fabricante del teléfono puede detener la app en segundo plano.',
-      ),
-      const _Bullet('Hace falta saldo en el chip para enviar SMS.'),
-      const _Bullet(
-        '«Enviado» significa entregado a la red del operador: no garantiza '
-        'que la persona lo haya leído.',
-      ),
-      const _Bullet('Tu ubicación y los números se quedan en este teléfono.'),
+      const _Bullet('Puede tardar unos minutos en detectar la salida.'),
+      const _Bullet('Hace falta saldo SMS y no forzar el cierre de la app.'),
     ],
   );
 }
@@ -147,6 +135,15 @@ class _RecipientsStepState extends State<RecipientsStep> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SafeZoneSetupViewModel>().refreshRecipients();
+    });
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     super.dispose();
@@ -161,15 +158,12 @@ class _RecipientsStepState extends State<RecipientsStep> {
       children: [
         const PageHeader(
           title: 'Quién recibe el aviso',
-          subtitle:
-              'Tu nombre aparece en el mensaje. Elige al menos una persona de '
-              'tu Red de Confianza; no hace falta que tenga la app.',
+          subtitle: 'Elige personas de tu Red de Confianza.',
         ),
         SizedBox(height: space.lg),
         QhawixTextField(
           label: 'Tu nombre',
           controller: _name,
-          helperText: 'Se muestra al final del SMS. Hasta 60 caracteres.',
           onChanged: vm.setOwnerName,
         ),
         SizedBox(height: space.lg),
@@ -181,10 +175,8 @@ class _RecipientsStepState extends State<RecipientsStep> {
         if (vm.availableRecipients.isEmpty)
           const EmptyState(
             icon: Icons.group_outlined,
-            title: 'Aún no tienes contactos activos',
-            message:
-                'Agrega a alguien en la Red de Confianza y vuelve aquí. '
-                'No necesita instalar QHAWIX.',
+            title: 'Sin contactos',
+            message: 'Agrégalos en la pestaña Red y vuelve aquí.',
           )
         else
           for (final r in vm.availableRecipients)
@@ -718,10 +710,7 @@ class PermissionsStep extends StatelessWidget {
       children: [
         const PageHeader(
           title: 'Permisos',
-          subtitle:
-              'Cada permiso se explica antes de pedirlo. Puedes dejar alguno '
-              'para después, pero el monitoreo no empieza sin los '
-              'obligatorios.',
+          subtitle: 'Solo pedimos lo necesario para vigilar y avisar.',
         ),
         SizedBox(height: space.lg),
         for (final kind in PermissionKind.values)
@@ -836,69 +825,35 @@ class AutoStartStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const PageHeader(
-          title: 'Permitir inicio automático',
+          title: 'Inicio automático',
           subtitle:
-              'En muchos teléfonos el sistema detiene la app al cerrarla. '
-              'Sin este permiso, la alerta SMS puede no salir con la app '
-              'cerrada. QHAWIX no puede leer si ya lo activaste: debes '
-              'confirmarlo tú.',
+              'Sin esto, el SMS puede no salir con la app cerrada. Actívalo '
+              'en el teléfono y confirma aquí.',
         ),
         SizedBox(height: space.lg),
         QhawixCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Honor / Huawei', style: context.text.titleMedium),
+              Text('En este teléfono (Honor)', style: context.text.titleMedium),
               SizedBox(height: space.sm),
               Text(
-                'Ajustes → Aplicaciones → Inicio de aplicaciones → QHAWIX → '
-                'gestión manual: activa Inicio automático, Inicio secundario '
-                'y Ejecutar en segundo plano.',
+                'Ajustes → Apps → Inicio de apps → QHAWIX → gestión manual: '
+                'Inicio automático, Inicio secundario y Segundo plano.',
                 style: context.text.bodyMedium,
               ),
-            ],
-          ),
-        ),
-        SizedBox(height: space.md),
-        QhawixCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Xiaomi / Redmi', style: context.text.titleMedium),
-              SizedBox(height: space.sm),
+              SizedBox(height: space.md),
               Text(
-                'Ajustes → Aplicaciones → Administrar aplicaciones → QHAWIX → '
-                'Autostart: activar. También Autorización de ahorro de batería '
-                '→ Sin restricciones.',
-                style: context.text.bodyMedium,
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: space.md),
-        QhawixCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Samsung y otros', style: context.text.titleMedium),
-              SizedBox(height: space.sm),
-              Text(
-                'Ajustes → Batería → Límites de uso en segundo plano → QHAWIX → '
-                'sin límites. Busca también “Inicio automático” o “Apps que '
-                'nunca duermen” si tu marca lo muestra.',
-                style: context.text.bodyMedium,
+                'Otras marcas: busca “Inicio automático” o “Sin restricciones '
+                'de batería” para QHAWIX.',
+                style: context.text.bodySmall?.copyWith(
+                  color: context.qColors.onSurfaceMuted,
+                ),
               ),
             ],
           ),
         ),
         SizedBox(height: space.lg),
-        const StatusBanner(
-          kind: StatusBannerKind.caution,
-          message:
-              'Si fuerza el cierre de QHAWIX desde recientes, Android cancela '
-              'alarmas y geocercas hasta que abras la app otra vez.',
-        ),
-        SizedBox(height: space.md),
         PrimaryButton(
           label: 'Ya lo activé en este teléfono',
           loading: vm.busy,
@@ -915,11 +870,25 @@ class AutoStartStep extends StatelessWidget {
 
 // -- 8. Review ---------------------------------------------------------------
 
-class ReviewStep extends StatelessWidget {
+class ReviewStep extends StatefulWidget {
   const ReviewStep({super.key, required this.onSendTest});
 
   /// Asks for the real-SMS confirmation and runs the test.
   final VoidCallback onSendTest;
+
+  @override
+  State<ReviewStep> createState() => _ReviewStepState();
+}
+
+class _ReviewStepState extends State<ReviewStep> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SafeZoneSetupViewModel>().refreshStatus();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -932,7 +901,7 @@ class ReviewStep extends StatelessWidget {
       children: [
         const PageHeader(
           title: 'Revisa y empieza',
-          subtitle: 'Comprueba los datos y envía una prueba antes de activar.',
+          subtitle: 'Una prueba de SMS y listo.',
         ),
         SizedBox(height: space.lg),
         QhawixCard(
@@ -984,6 +953,15 @@ class ReviewStep extends StatelessWidget {
             actionLabel: 'Ir a permisos',
             onAction: () => vm.goTo(SetupStep.permissions),
           ),
+        if (!vm.autoStartConfirmed) ...[
+          SizedBox(height: space.md),
+          StatusBanner(
+            kind: StatusBannerKind.caution,
+            message: 'Confirma el inicio automático antes de activar.',
+            actionLabel: 'Ir a ese paso',
+            onAction: () => vm.goTo(SetupStep.autoStart),
+          ),
+        ],
         if (vm.allIssues.isNotEmpty) ...[
           SizedBox(height: space.md),
           StatusBanner(
@@ -997,7 +975,7 @@ class ReviewStep extends StatelessWidget {
         SecondaryButton(
           label: 'Enviar mensaje de prueba',
           icon: Icons.sms_outlined,
-          onPressed: vm.busy ? null : onSendTest,
+          onPressed: vm.busy ? null : widget.onSendTest,
         ),
         if (vm.running == SetupCommand.sendTest)
           Padding(
@@ -1016,13 +994,6 @@ class ReviewStep extends StatelessWidget {
                     label: _nameFor(vm, r.phone),
                     value: SafeZoneLabels.sendOutcome(r.outcome),
                   ),
-                Text(
-                  'Entregado a la red del operador no confirma que la persona '
-                  'lo haya recibido: pregúntale.',
-                  style: context.text.bodySmall?.copyWith(
-                    color: context.qColors.onSurfaceMuted,
-                  ),
-                ),
               ],
             ),
           ),

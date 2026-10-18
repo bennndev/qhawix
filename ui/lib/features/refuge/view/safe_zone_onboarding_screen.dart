@@ -99,6 +99,9 @@ class _Wizard extends StatelessWidget {
     final isLast = vm.step == SetupStep.review;
     final position = vm.step.index + 1;
     final total = SetupStep.values.length;
+    // Leave the route only on the step that opened the wizard (or intro on
+    // first-time setup). Mid-wizard back walks previous steps.
+    final canLeave = atStart && Navigator.of(context).canPop();
     return PopScope(
       canPop: atStart,
       onPopInvokedWithResult: (didPop, _) {
@@ -108,8 +111,8 @@ class _Wizard extends StatelessWidget {
         onResume: vm.refreshStatus,
         child: Scaffold(
           appBar: QhawixAppBar(
-            title: 'Alertas de zona segura',
-            automaticallyImplyLeading: editing && atStart,
+            title: 'Zona segura',
+            automaticallyImplyLeading: canLeave,
           ),
           body: SafeArea(
             child: vm.loading
@@ -146,9 +149,9 @@ class _Wizard extends StatelessWidget {
                       _Actions(
                         isFirst: isFirst,
                         isLast: isLast,
-                        leaves: editing && atStart,
+                        leaves: canLeave,
                         vm: vm,
-                        onBack: editing && atStart
+                        onBack: canLeave
                             ? () => Navigator.of(context).maybePop()
                             : vm.back,
                         onNext: vm.next,
@@ -216,7 +219,7 @@ class _Actions extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
 
-  /// Back leaves the wizard (editing from its first step).
+  /// Back leaves the wizard route (app bar + Cancelar), not a prior step.
   final bool leaves;
   final SafeZoneSetupViewModel vm;
   final VoidCallback onBack;

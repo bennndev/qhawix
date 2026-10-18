@@ -96,11 +96,9 @@ void main() {
         const SafeZoneOnboardingScreen(),
         platform: FakeSafeZonePlatform(),
       );
-      expect(find.text('Alertas de zona segura'), findsWidgets);
-      expect(find.textContaining('varios minutos'), findsOneWidget);
-      expect(find.textContaining('fabricante del teléfono'), findsOneWidget);
-      expect(find.textContaining('saldo en el chip'), findsOneWidget);
-      expect(find.textContaining('red del operador'), findsOneWidget);
+      expect(find.text('Zona segura'), findsWidgets);
+      expect(find.textContaining('unos minutos'), findsOneWidget);
+      expect(find.textContaining('saldo SMS'), findsOneWidget);
       expect(find.textContaining('Paso 1 de 8'), findsOneWidget);
       expect(find.text('Atrás'), findsNothing);
     });
@@ -389,7 +387,6 @@ void main() {
       await _tapText(tester, 'Enviar SMS real');
       expect(platform.calls, contains('sendTestMessage'));
       expect(find.text('Entregado a la red del operador'), findsOneWidget);
-      expect(find.textContaining('no confirma que la persona'), findsOneWidget);
     });
 
     testWidgets('an unavailable device says so', (tester) async {
@@ -494,7 +491,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('1 de 2'), findsOneWidget);
-      expect(find.text('Concedido'), findsNWidgets(5));
+      expect(find.text('Concedido'), findsNothing);
       await _scrollTo(tester, find.text('Configuración'));
       expect(find.text('300 m'), findsOneWidget);
       expect(
@@ -557,8 +554,11 @@ void main() {
     ) async {
       final platform = _configuredPlatform();
       await pumpRefuge(tester, const RefugeScreen(), platform: platform);
-      await _tapText(tester, 'Probar el proceso completo');
-      expect(find.text('Probar el proceso completo'), findsWidgets);
+      final probe = find.textContaining('alerta completa');
+      expect(probe, findsOneWidget);
+      await tester.ensureVisible(probe);
+      await tester.tap(probe);
+      await tester.pumpAndSettle();
       expect(find.textContaining('SMS real'), findsWidgets);
       expect(platform.calls, isNot(contains('runEndToEndTest')));
       await _tapText(tester, 'Iniciar prueba con SMS real');

@@ -270,6 +270,25 @@ class SafeZoneSetupViewModel extends ChangeNotifier {
     }
   }
 
+  /// Reloads Trust Circle candidates without touching the rest of the draft.
+  Future<void> refreshRecipients() async {
+    final revision = ++_revision;
+    try {
+      final candidates = await _recipientSource.activeRecipients();
+      if (_stale(revision)) return;
+      final selected = Set<String>.from(_selectedPhones);
+      _available = candidates;
+      _selectedPhones
+        ..clear()
+        ..addAll(
+          selected.where((p) => candidates.any((c) => c.phone == p)),
+        );
+      _notify();
+    } on Object {
+      // Keep the list already shown; the person can try again.
+    }
+  }
+
   void _prefill(SafeZoneConfig c) {
     _ownerName = c.ownerName;
     _home = c.home;
