@@ -1,8 +1,4 @@
-enum QrReputationStatus {
-  knownThreat,
-  noKnownThreats,
-  suspiciousOrUnverified,
-}
+enum QrReputationStatus { knownThreat, noKnownThreats, suspiciousOrUnverified }
 
 enum QrProviderState {
   notConfigured,
@@ -26,8 +22,9 @@ class QrReputationResult {
     required List<String> categories,
     List<String> checkedCategories = const [],
     this.providerState = QrProviderState.notRequested,
-  })  : categories = List.unmodifiable(categories),
-        checkedCategories = List.unmodifiable(checkedCategories) {
+    this.isSimulation = false,
+  }) : categories = List.unmodifiable(categories),
+       checkedCategories = List.unmodifiable(checkedCategories) {
     if (status == QrReputationStatus.knownThreat && categories.isEmpty) {
       throw ArgumentError('A known threat requires at least one category.');
     }
@@ -42,6 +39,7 @@ class QrReputationResult {
   final List<String> categories;
   final List<String> checkedCategories;
   final QrProviderState providerState;
+  final bool isSimulation;
 
   factory QrReputationResult.suspiciousOrUnverified(
     String reasonCode, {
@@ -52,6 +50,7 @@ class QrReputationResult {
     bool coverageComplete = false,
     List<String> categories = const [],
     List<String> checkedCategories = const [],
+    bool isSimulation = false,
   }) {
     return QrReputationResult(
       status: QrReputationStatus.suspiciousOrUnverified,
@@ -63,6 +62,7 @@ class QrReputationResult {
       categories: List.unmodifiable(categories),
       checkedCategories: checkedCategories,
       providerState: providerState,
+      isSimulation: isSimulation,
     );
   }
 }

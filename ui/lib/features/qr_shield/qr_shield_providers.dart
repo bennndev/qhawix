@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
+import 'data/repositories/demo_qr_reputation_repository.dart';
 import 'data/repositories/web_risk_qr_reputation_repository.dart';
 import 'data/services/android_qr_image_decoder.dart';
 import 'data/services/android_qr_security_history_repository.dart';
@@ -29,18 +31,29 @@ List<SingleChildWidget> qrShieldProviders() => [
   ),
   Provider<QrUrlInspector>(create: (_) => QrUrlInspector()),
   Provider<QrReputationRepository>(
-    create: (_) => WebRiskQrReputationRepository(),
-    dispose: (_, repository) =>
-        (repository as WebRiskQrReputationRepository).close(),
+    create: (context) {
+      final webRiskRepository = WebRiskQrReputationRepository();
+      return kDebugMode
+          ? DemoQrReputationRepository(
+              fallback: webRiskRepository,
+              clock: context.read<QrClock>(),
+            )
+          : webRiskRepository;
+    },
+    dispose: (_, repository) {
+      if (repository is DemoQrReputationRepository) {
+        repository.close();
+      } else if (repository is WebRiskQrReputationRepository) {
+        repository.close();
+      }
+    },
   ),
   Provider<QrReputationPolicy>(create: (_) => const QrReputationPolicy()),
   Provider<InspectQrPayload>(
     create: (context) =>
         InspectQrPayload(urlInspector: context.read<QrUrlInspector>()),
   ),
-  Provider<ExternalBrowser>(
-    create: (_) => const UrlLauncherExternalBrowser(),
-  ),
+  Provider<ExternalBrowser>(create: (_) => const UrlLauncherExternalBrowser()),
   ChangeNotifierProvider<QrShieldViewModel>(
     create: (context) => QrShieldViewModel(
       inspectPayload: context.read<InspectQrPayload>(),
@@ -50,8 +63,8 @@ List<SingleChildWidget> qrShieldProviders() => [
       imageDecoder: context.read<QrImageDecoder>(),
       reputationPolicy: context.read<QrReputationPolicy>(),
       securityHistoryRepository: context.read<QrSecurityHistoryRepository>(),
-      securityHistoryQueryRepository:
-          context.read<QrSecurityHistoryQueryRepository>(),
+      securityHistoryQueryRepository: context
+          .read<QrSecurityHistoryQueryRepository>(),
     ),
   ),
 ];

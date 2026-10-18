@@ -437,6 +437,9 @@ class QrShieldViewModel extends ChangeNotifier {
     if (current == null || current.revision != expectedRevision) {
       return QrOpenResult.reviewChanged;
     }
+    if (current.reputation?.isSimulation == true) {
+      return QrOpenResult.localPolicyBlocked;
+    }
     if (current.urlAssessment == null) return QrOpenResult.notAUrl;
     if (!userConfirmed) return QrOpenResult.confirmationRequired;
     if (current.isCheckingReputation || current.isCheckingAllowlist) {

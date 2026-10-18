@@ -109,6 +109,7 @@ class _UrlReviewState extends State<_UrlReview> {
     _scheduleThreatAlert();
     final assessment = review.urlAssessment!;
     final reputation = review.reputation;
+    final isSimulation = reputation?.isSimulation == true;
     final isKnownThreat = reputation?.status == QrReputationStatus.knownThreat;
 
     return Column(
@@ -231,6 +232,7 @@ class _UrlReviewState extends State<_UrlReview> {
         ],
         if (widget.canOpenExternally &&
             !isKnownThreat &&
+            !isSimulation &&
             assessment.canOpenExternally &&
             !review.wasAutomaticallyOpened) ...[
           const SizedBox(height: 12),
@@ -246,9 +248,10 @@ class _UrlReviewState extends State<_UrlReview> {
             ),
           ),
         ] else if (isKnownThreat)
-          const _KnownThreatBlockedCard(),
+          _KnownThreatBlockedCard(isSimulation: isSimulation),
         if (!widget.canOpenExternally &&
             !isKnownThreat &&
+            !isSimulation &&
             !review.isCheckingReputation &&
             !review.isCheckingAllowlist)
           const _UnverifiedBlockedCard(),
@@ -283,9 +286,15 @@ class _UrlReviewState extends State<_UrlReview> {
             Icons.gpp_bad_outlined,
             color: Theme.of(dialogContext).colorScheme.error,
           ),
-          title: const Text('Alerta: amenaza conocida'),
+          title: Text(
+            reputation.isSimulation
+                ? 'Demostración: QR marcado para bloqueo'
+                : 'Alerta: amenaza conocida',
+          ),
           content: Text(
-            categories.isEmpty
+            reputation.isSimulation
+                ? 'Resultado predefinido localmente para la prueba. No se consultó Google Web Risk, no se abrirá el enlace y no se guardará como incidente.'
+                : categories.isEmpty
                 ? 'La fuente de reputación reportó este destino como una amenaza. Escudo QR bloqueó su apertura.'
                 : 'La fuente de reputación reportó este destino como una amenaza (${categories.join(', ')}). Escudo QR bloqueó su apertura.',
           ),
@@ -394,7 +403,7 @@ class _UrlReviewState extends State<_UrlReview> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Esta URL exacta se enviará, sin el fragmento, a $providerName para revisar su reputación:',
+                'Esta URL exacta se revisará, sin el fragmento, con $providerName:',
               ),
               const SizedBox(height: 8),
               SelectableText(urlForProvider.toString()),
@@ -513,8 +522,17 @@ class _VerdictCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final reputationResult = reputation;
     final status = reputationResult?.status;
+    final isSimulation = reputationResult?.isSimulation == true;
+    final theme = Theme.of(context);
     final title = checking
         ? 'Comprobando enlace'
+        : isSimulation
+        ? switch (status) {
+            QrReputationStatus.knownThreat => 'Prueba roja: phishing marcado',
+            QrReputationStatus.noKnownThreats => 'Prueba verde: URL permitida',
+            QrReputationStatus.suspiciousOrUnverified ||
+            null => 'Prueba: resultado no verificable',
+          }
         : switch (status) {
             QrReputationStatus.knownThreat => 'Amenaza conocida',
             QrReputationStatus.noKnownThreats => 'Sin amenazas detectadas',
@@ -523,6 +541,8 @@ class _VerdictCard extends StatelessWidget {
           };
     final detail = checking
         ? 'La consulta está en curso.'
+        : isSimulation
+        ? 'Resultado local predefinido para la demostración. No se consultó Google Web Risk, no se abrirá el enlace y no se guardará como incidente.'
         : switch (reputationResult?.reasonCode) {
             'provider_not_configured' =>
               'La consulta de reputación en línea no está configurada. Esto no significa que el enlace sea seguro.',
@@ -568,6 +588,17 @@ class _VerdictCard extends StatelessWidget {
             QrReputationStatus.suspiciousOrUnverified ||
             null => Icons.help_outline,
           };
+    final Color? statusColor = checking
+        ? null
+        : switch (status) {
+            QrReputationStatus.knownThreat => theme.colorScheme.error,
+            QrReputationStatus.noKnownThreats =>
+              theme.brightness == Brightness.dark
+                  ? Colors.lightGreenAccent.shade400
+                  : Colors.green.shade800,
+            QrReputationStatus.suspiciousOrUnverified ||
+            null => theme.colorScheme.onSurfaceVariant,
+          };
 
     return Card(
       child: Padding(
@@ -575,26 +606,34 @@ class _VerdictCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 28),
+            Icon(icon, size: 28, color: statusColor),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: statusColor,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(detail),
                   if (reputationResult?.provider case final provider?) ...[
                     const SizedBox(height: 8),
                     Text('Fuente: $provider'),
                   ],
-                  if (reputationResult?.checkedAt case final checkedAt?)
-                    Text('Consultado: ${checkedAt.toLocal()}'),
-                  if (reputationResult?.expiresAt case final expiresAt?)
-                    Text(
-                      'Vigencia informada por la fuente hasta: ${expiresAt.toLocal()}',
-                    ),
-                  if (status == QrReputationStatus.noKnownThreats) ...[
+                  if (!isSimulation) ...[
+                    if (reputationResult?.checkedAt case final checkedAt?)
+                      Text('Consultado: ${checkedAt.toLocal()}'),
+                    if (reputationResult?.expiresAt case final expiresAt?)
+                      Text(
+                        'Vigencia informada por la fuente hasta: ${expiresAt.toLocal()}',
+                      ),
+                  ],
+                  if (status == QrReputationStatus.noKnownThreats &&
+                      !isSimulation) ...[
                     if (reviewExpiresAt case final reviewExpiry?)
                       Text(
                         'Revisión local disponible hasta: ${reviewExpiry.toLocal()}',
@@ -606,12 +645,14 @@ class _VerdictCard extends StatelessWidget {
                     ),
                   ],
                   if (reputationResult != null)
-                    Text('Cobertura: ${_coverageLabel(reputationResult)}'),
-                  if (reputationResult != null)
                     Text(
-                      'Estado del proveedor: ${_providerStateLabel(reputationResult.providerState)}',
+                      'Cobertura: ${isSimulation ? 'no consultada (demo)' : _coverageLabel(reputationResult)}',
                     ),
                   if (reputationResult != null)
+                    Text(
+                      'Estado del proveedor: ${isSimulation ? 'no consultado (demo local)' : _providerStateLabel(reputationResult.providerState)}',
+                    ),
+                  if (reputationResult != null && !isSimulation)
                     Text(
                       'Categorías consultadas: ${reputationResult.checkedCategories.isEmpty ? 'no reportadas' : reputationResult.checkedCategories.join(', ')}',
                     ),
@@ -619,7 +660,7 @@ class _VerdictCard extends StatelessWidget {
                       reputationResult != null &&
                       reputationResult.categories.isNotEmpty)
                     Text(
-                      'Categorías reportadas: ${reputationResult.categories.join(', ')}',
+                      '${isSimulation ? 'Categoría de demostración' : 'Categorías reportadas'}: ${reputationResult.categories.join(', ')}',
                     ),
                 ],
               ),
@@ -761,7 +802,9 @@ class _UnsupportedContentCard extends StatelessWidget {
 }
 
 class _KnownThreatBlockedCard extends StatelessWidget {
-  const _KnownThreatBlockedCard();
+  const _KnownThreatBlockedCard({required this.isSimulation});
+
+  final bool isSimulation;
 
   @override
   Widget build(BuildContext context) {
@@ -779,12 +822,16 @@ class _KnownThreatBlockedCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Enlace bloqueado: amenaza conocida',
+                    isSimulation
+                        ? 'Prueba de phishing bloqueada'
+                        : 'Enlace bloqueado: amenaza conocida',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'La fuente de reputación reportó este destino. No se abrirá en el navegador.',
+                  Text(
+                    isSimulation
+                        ? 'Resultado local simulado; no se consultó Google Web Risk.'
+                        : 'La fuente de reputación reportó este destino. No se abrirá en el navegador.',
                   ),
                 ],
               ),
