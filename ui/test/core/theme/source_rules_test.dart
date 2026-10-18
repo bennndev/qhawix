@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// DESIGN.md (Flutter mapping): a check forbids literal colors, font sizes and
-/// numeric durations outside `core/theme/`. The mascot rig is the other
-/// exemption.
+/// numeric durations outside `core/theme/`. Shared provider timeouts live in
+/// `core/timeouts.dart`; the mascot rig is the other duration exemption.
 final _rules = <String, RegExp>{
   'Color(0x...)': RegExp(r'\bColor\(\s*0x', caseSensitive: true),
   'TextStyle(fontSize: ...)': RegExp(r'TextStyle\(\s*fontSize\s*:'),
@@ -17,6 +17,7 @@ final _rules = <String, RegExp>{
 bool _exempt(String path) {
   final p = path.replaceAll('\\', '/');
   return p.contains('/core/theme/') ||
+      p.endsWith('/core/timeouts.dart') ||
       p.contains('/core/widgets/guardian_mascot/');
 }
 
@@ -50,6 +51,7 @@ void main() {
       violations({
         '/lib/a.dart': 'final d = Duration.zero; final c = Colors.transparent;',
         '/lib/core/theme/t.dart': 'const c = Color(0xFF112233);',
+        '/lib/core/timeouts.dart': 'const d = Duration(seconds: 8);',
         '/lib/core/widgets/guardian_mascot/m.dart':
             'const c = Color(0xFF112233);',
       }),
