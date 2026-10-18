@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qhawix.invalid/contracts/qr-reputation-response-1.0.0.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "inputRevision", "providerVerdict", "categoriesChecked", "categoriesMatched", "provider", "providerCheckedAt", "servedFromCache", "redirectResolution", "version", "isFixture"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "requestId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+    "inputRevision": { "type": "integer", "minimum": 1 },
+    "providerVerdict": { "enum": ["match", "no_match"] },
+    "categoriesChecked": { "type": "array", "items": { "type": "string" } },
+    "categoriesMatched": { "type": "array", "items": { "type": "string" } },
+    "provider": { "type": "string" },
+    "providerCheckedAt": { "type": "string", "format": "date-time" },
+    "providerExpiresAt": { "type": "string", "format": "date-time" },
+    "servedFromCache": { "type": "boolean" },
+    "redirectResolution": { "const": "not_performed" },
+    "version": { "type": "string" },
+    "isFixture": { "const": false }
+  }
+}

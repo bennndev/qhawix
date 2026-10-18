@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qhawix.invalid/contracts/qr-reputation-request-1.0.0.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "sessionId", "inputRevision", "url", "consentVersion"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "requestId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+    "sessionId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+    "inputRevision": { "type": "integer", "minimum": 1 },
+    "url": { "type": "string", "maxLength": 8192, "format": "uri" },
+    "consentVersion": { "const": "qr-url-lookup-1" }
+  }
+}
