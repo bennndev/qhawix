@@ -114,11 +114,20 @@ class _UrlReviewState extends State<_UrlReview> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _VerdictCard(
-          reputation: reputation,
-          reviewExpiresAt: review.reputationReviewExpiresAt,
-          checking: review.isCheckingReputation,
-        ),
+        if (review.isCheckingAllowlist)
+          const _AllowlistCheckingCard()
+        else if (review.isAllowlisted)
+          const _AllowedByUserCard()
+        else
+          _VerdictCard(
+            reputation: reputation,
+            reviewExpiresAt: review.reputationReviewExpiresAt,
+            checking: review.isCheckingReputation,
+          ),
+        if (review.wasAutomaticallyOpened) ...[
+          const SizedBox(height: 12),
+          const _AutomaticallyOpenedCard(),
+        ],
         const SizedBox(height: 16),
         Card(
           child: Padding(
@@ -204,12 +213,13 @@ class _UrlReviewState extends State<_UrlReview> {
             ),
           ),
         ],
-        if (context.read<QrShieldViewModel>().canRequestReputation &&
+        if (!review.isAllowlisted &&
+            context.read<QrShieldViewModel>().canRequestReputation &&
             assessment.isEligibleForReputation) ...[
           const SizedBox(height: 12),
           OutlinedButton.icon(
             key: const Key('check-url-reputation'),
-            onPressed: review.isCheckingReputation
+            onPressed: review.isCheckingReputation || review.isCheckingAllowlist
                 ? null
                 : () => _confirmReputationCheck(context),
             icon: const Icon(Icons.cloud_done_outlined),
@@ -221,11 +231,12 @@ class _UrlReviewState extends State<_UrlReview> {
         ],
         if (widget.canOpenExternally &&
             !isKnownThreat &&
-            assessment.canOpenExternally) ...[
+            assessment.canOpenExternally &&
+            !review.wasAutomaticallyOpened) ...[
           const SizedBox(height: 12),
           FilledButton.icon(
             key: const Key('open-external-url'),
-            onPressed: review.isCheckingReputation
+            onPressed: review.isCheckingReputation || review.isCheckingAllowlist
                 ? null
                 : () => _confirmAndOpen(context),
             icon: const Icon(Icons.open_in_browser),
@@ -238,7 +249,8 @@ class _UrlReviewState extends State<_UrlReview> {
           const _KnownThreatBlockedCard(),
         if (!widget.canOpenExternally &&
             !isKnownThreat &&
-            !review.isCheckingReputation)
+            !review.isCheckingReputation &&
+            !review.isCheckingAllowlist)
           const _UnverifiedBlockedCard(),
         const SizedBox(height: 8),
         const Text(
@@ -394,6 +406,11 @@ class _UrlReviewState extends State<_UrlReview> {
                 'detectar todos los tokens. Revisa el enlace antes de autorizar.',
               ),
               const SizedBox(height: 8),
+              const Text(
+                'Si la respuesta es completa y no hay señales locales, el '
+                'enlace se abrirá automáticamente en el navegador externo.',
+              ),
+              const SizedBox(height: 8),
               const Text('¿Autorizas esta consulta?'),
             ],
           ),
@@ -416,6 +433,69 @@ class _UrlReviewState extends State<_UrlReview> {
       expectedRevision: currentReview.revision,
     );
   }
+}
+
+class _AllowlistCheckingCard extends StatelessWidget {
+  const _AllowlistCheckingCard();
+
+  @override
+  Widget build(BuildContext context) => const Card(
+    child: Padding(
+      padding: EdgeInsets.all(16),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          SizedBox(width: 12),
+          Expanded(child: Text('Revisando enlaces permitidos del historial.')),
+        ],
+      ),
+    ),
+  );
+}
+
+class _AllowedByUserCard extends StatelessWidget {
+  const _AllowedByUserCard();
+
+  @override
+  Widget build(BuildContext context) => const Card(
+    child: Padding(
+      padding: EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.verified_user_outlined),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Permitido por ti desde el historial. Web Risk se omitió para esta URL exacta.',
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _AutomaticallyOpenedCard extends StatelessWidget {
+  const _AutomaticallyOpenedCard();
+
+  @override
+  Widget build(BuildContext context) => const Card(
+    child: Padding(
+      padding: EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(Icons.open_in_browser),
+          SizedBox(width: 12),
+          Expanded(child: Text('El enlace se abrió en el navegador externo.')),
+        ],
+      ),
+    ),
+  );
 }
 
 class _VerdictCard extends StatelessWidget {

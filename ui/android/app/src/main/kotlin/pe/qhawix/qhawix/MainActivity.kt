@@ -13,6 +13,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.URI
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
@@ -49,6 +50,9 @@ class MainActivity : FlutterActivity() {
                     historyDatabase,
                     result,
                 )
+                "isUrlAllowed" -> isUrlAllowed(call, historyDatabase, result)
+                "getIncidents" -> loadSecurityIncidents(historyDatabase, result)
+                "allowIncident" -> allowIncident(call, historyDatabase, result)
                 else -> result.notImplemented()
             }
         }
@@ -61,6 +65,7 @@ class MainActivity : FlutterActivity() {
     ) {
         val timestamp = call.argument<String>("timestamp")
         val blockedUrl = call.argument<String>("url_bloqueada")
+        val lookupUrl = call.argument<String>("lookup_url")
         val category = call.argument<String>("categoria_amenaza")
         val source = call.argument<String>("detection_source")
         val categories = category?.split(',')?.map(String::trim).orEmpty()
@@ -76,6 +81,7 @@ class MainActivity : FlutterActivity() {
             (!blockedUrl.startsWith("https://") && !blockedUrl.startsWith("http://")) ||
             blockedUrl.toByteArray(Charsets.UTF_8).size > MAX_URL_BYTES ||
             blockedUrl.any { Character.isISOControl(it) } ||
+            lookupUrl == null || !isValidLookupUrl(lookupUrl) ||
             category == null || categories.isEmpty() ||
             categories.any { it !in validCategories } ||
             source == null || source !in setOf("localPolicy", "googleWebRisk")
@@ -89,6 +95,7 @@ class MainActivity : FlutterActivity() {
                 val rowId = database.recordBlockedIncident(
                     timestamp = timestamp,
                     blockedUrl = blockedUrl,
+                    lookupUrl = lookupUrl!!,
                     threatCategory = categories.joinToString(","),
                     detectionSource = source!!,
                 )
@@ -102,6 +109,97 @@ class MainActivity : FlutterActivity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun isUrlAllowed(
+        call: MethodCall,
+        database: QrSecurityHistoryDatabase,
+        result: MethodChannel.Result,
+    ) {
+        val lookupUrl = call.argument<String>("lookup_url")
+        if (lookupUrl == null || !isValidLookupUrl(lookupUrl)) {
+            result.success(false)
+            return
+        }
+
+        securityHistoryExecutor.execute {
+            try {
+                val allowed = database.isUrlAllowed(lookupUrl)
+                mainThreadHandler.post { result.success(allowed) }
+            } catch (_: Exception) {
+                mainThreadHandler.post {
+                    result.error(
+                        "history_read_failed",
+                        "The QR allowlist could not be read.",
+                        null,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadSecurityIncidents(
+        database: QrSecurityHistoryDatabase,
+        result: MethodChannel.Result,
+    ) {
+        securityHistoryExecutor.execute {
+            try {
+                val incidents = database.loadIncidents()
+                mainThreadHandler.post { result.success(incidents) }
+            } catch (_: Exception) {
+                mainThreadHandler.post {
+                    result.error(
+                        "history_read_failed",
+                        "The QR security history could not be read.",
+                        null,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun allowIncident(
+        call: MethodCall,
+        database: QrSecurityHistoryDatabase,
+        result: MethodChannel.Result,
+    ) {
+        val id = call.argument<Number>("id")?.toLong()
+        if (id == null || id <= 0) {
+            result.success(false)
+            return
+        }
+
+        securityHistoryExecutor.execute {
+            try {
+                val updated = database.allowIncident(id)
+                mainThreadHandler.post { result.success(updated) }
+            } catch (_: Exception) {
+                mainThreadHandler.post {
+                    result.error(
+                        "history_update_failed",
+                        "The QR history record could not be updated.",
+                        null,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun isValidLookupUrl(rawUrl: String): Boolean {
+        if (rawUrl.toByteArray(Charsets.UTF_8).size > MAX_URL_BYTES ||
+            rawUrl.any { Character.isISOControl(it) }
+        ) {
+            return false
+        }
+        return try {
+            val uri = URI(rawUrl)
+            (uri.scheme == "http" || uri.scheme == "https") &&
+                !uri.rawAuthority.isNullOrBlank() &&
+                !uri.rawAuthority.contains('@') &&
+                uri.rawUserInfo == null
+        } catch (_: Exception) {
+            false
         }
     }
 

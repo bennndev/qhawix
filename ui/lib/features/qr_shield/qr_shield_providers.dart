@@ -11,6 +11,7 @@ import 'domain/repositories/qr_clock.dart';
 import 'domain/repositories/qr_image_decoder.dart';
 import 'domain/repositories/qr_reputation_repository.dart';
 import 'domain/repositories/qr_security_history_repository.dart';
+import 'domain/repositories/qr_security_history_query_repository.dart';
 import 'domain/services/qr_reputation_policy.dart';
 import 'domain/services/qr_url_inspector.dart';
 import 'domain/use_cases/inspect_qr_payload.dart';
@@ -21,6 +22,9 @@ List<SingleChildWidget> qrShieldProviders() => [
   Provider<QrClock>(create: (_) => const SystemQrClock()),
   Provider<QrImageDecoder>(create: (_) => AndroidQrImageDecoder()),
   Provider<QrSecurityHistoryRepository>(
+    create: (_) => AndroidQrSecurityHistoryRepository(),
+  ),
+  Provider<QrSecurityHistoryQueryRepository>(
     create: (_) => AndroidQrSecurityHistoryRepository(),
   ),
   Provider<QrUrlInspector>(create: (_) => QrUrlInspector()),
@@ -46,6 +50,8 @@ List<SingleChildWidget> qrShieldProviders() => [
       imageDecoder: context.read<QrImageDecoder>(),
       reputationPolicy: context.read<QrReputationPolicy>(),
       securityHistoryRepository: context.read<QrSecurityHistoryRepository>(),
+      securityHistoryQueryRepository:
+          context.read<QrSecurityHistoryQueryRepository>(),
     ),
   ),
 ];

@@ -167,8 +167,9 @@ class _QrScannerScreenState extends State<QrScannerScreen>
                     const Icon(Icons.camera_alt_outlined, size: 52),
                     const SizedBox(height: 16),
                     Text(
-                      'La cámara se usa solo para leer el QR que tienes enfrente. '
-                      'El contenido se revisa en el dispositivo y no se abre solo.',
+                      'La cámara lee el QR para revisar su contenido. Las amenazas '
+                      'conocidas se bloquean; los enlaces verificados sin coincidencias '
+                      'y los que permitiste desde el historial se abren en el navegador.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
