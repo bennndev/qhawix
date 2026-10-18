@@ -17,8 +17,9 @@ import '../viewmodel/trust_circle_view_model.dart';
 import 'labels.dart';
 import 'trust_circle_scaffold.dart';
 
-/// Permissions, channel order, pause and removal of one contact. Removing pops
-/// the screen with the result sentence so the list can show it.
+/// Permissions, channels, pause and removal of one contact. Removing pops the
+/// screen with the result sentence so the list can show it. A contact without
+/// the app can be invited to install it, as an optional action.
 class ContactDetailScreen extends StatefulWidget {
   const ContactDetailScreen({super.key, required this.contactId});
 
@@ -42,9 +43,9 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
       context: context,
       title: 'Quitar a ${contact.name}',
       consequence:
-          'Dejará de recibir tus avisos y de ver tu ubicación temporal. '
-          'Para volver a incluirla tendrás que invitarla de nuevo y ella '
-          'tendrá que aceptar. No se puede deshacer.',
+          'Dejará de estar entre las personas a las que avisas y no se le '
+          'preparará ningún mensaje ni ubicación. Para volver a incluirla '
+          'tendrás que agregarla de nuevo. No se puede deshacer.',
       confirmLabel: 'Quitar de mi red',
     );
     if (!confirmed || !mounted) return;
@@ -71,6 +72,7 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     }
     final space = context.space;
     final style = contactStatusStyle(contact.status);
+    final kind = contactKindStyle(contact.kind);
     final paused = contact.status == ContactStatus.paused;
     final permissions = contact.permissions;
     return TrustCircleScaffold(
@@ -92,26 +94,36 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                     ),
                   ),
                   SizedBox(height: space.xs),
-                  StatusChip(
-                    label: style.label,
-                    icon: style.icon,
-                    tone: style.tone,
+                  Wrap(
+                    spacing: space.sm,
+                    runSpacing: space.xs,
+                    children: [
+                      StatusChip(
+                        label: kind.label,
+                        icon: kind.icon,
+                        tone: kind.tone,
+                      ),
+                      StatusChip(
+                        label: style.label,
+                        icon: style.icon,
+                        tone: style.tone,
+                      ),
+                      if (contact.installInvitePending)
+                        StatusChip(
+                          label: installInvitePendingStyle.label,
+                          icon: installInvitePendingStyle.icon,
+                          tone: installInvitePendingStyle.tone,
+                        ),
+                    ],
                   ),
                 ],
               ),
             ),
           ],
         ),
-        if (contact.status == ContactStatus.invited)
-          const StatusBanner(
-            message:
-                'Aún no aceptó la invitación. No recibe avisos ni ve nada '
-                'hasta que acepte.',
-            kind: StatusBannerKind.caution,
-          ),
         if (paused)
           const StatusBanner(
-            message: 'Contacto en pausa: no recibe ningún aviso.',
+            message: 'Contacto en pausa: no se le prepara ningún aviso.',
           ),
         SectionCard(
           title: 'Permisos',
@@ -129,19 +141,48 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
             ),
             ToggleRow(
               title: 'Puede pedir mi Refugio',
-              description:
-                  'Solo puede pedirlo: tú verificas y apruebas cada vez.',
-              value: permissions.mayRequestRemoteRefuge,
-              onChanged: (v) => _run(
-                () => vm.updatePermissions(
-                  contact.id,
-                  permissions.copyWith(mayRequestRemoteRefuge: v),
+              description: contact.canRequestRemoteRefuge
+                  ? 'Solo puede pedirlo: tú verificas y apruebas cada vez.'
+                  : 'Necesita la app: sin ella no puede pedirlo.',
+              value:
+                  contact.canRequestRemoteRefuge &&
+                  permissions.mayRequestRemoteRefuge,
+              showDivider: contact.hasApp,
+              onChanged: contact.canRequestRemoteRefuge
+                  ? (v) => _run(
+                      () => vm.updatePermissions(
+                        contact.id,
+                        permissions.copyWith(mayRequestRemoteRefuge: v),
+                      ),
+                    )
+                  : null,
+            ),
+            if (!contact.hasApp && !contact.installInvitePending)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TertiaryButton(
+                  label: 'Invitar a instalar QHAWIX',
+                  icon: Icons.install_mobile_outlined,
+                  onPressed: () => _run(() => vm.inviteToInstall(contact.id)),
                 ),
               ),
-            ),
+            if (!contact.hasApp && contact.installInvitePending)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: space.sm),
+                child: Text(
+                  'Invitación a instalar pendiente.',
+                  style: context.text.bodySmall,
+                ),
+              ),
+            if (!contact.hasApp) Divider(color: context.qColors.mist),
             ToggleRow(
-              title: 'Puede ver mi ubicación temporal',
-              description: 'Solo durante un SOS y por el tiempo que elijas.',
+              title: contact.hasApp
+                  ? 'Puede ver mi ubicación temporal'
+                  : 'Incluir mi ubicación en los mensajes de SOS',
+              description: contact.hasApp
+                  ? 'Solo durante un SOS y por el tiempo que elijas.'
+                  : 'Solo la ubicación del momento del envío. '
+                        'La ubicación en vivo requiere la app.',
               value: permissions.maySeeTemporaryLocation,
               showDivider: false,
               onChanged: (v) => _run(
@@ -157,25 +198,32 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
           title: 'Canales de aviso',
           children: [
             Text(
-              '1.º ${alertChannelLabel(AlertChannel.push)}. Si no se puede '
-              'entregar, 2.º el canal que elijas:',
+              contact.hasApp
+                  ? '1.º ${alertChannelLabel(AlertChannel.push)}. Si no se '
+                        'puede entregar, 2.º el canal que elijas:'
+                  : 'Sin la app, los avisos van por SMS o WhatsApp. Se '
+                        'preparan en tu teléfono y los envías tú:',
               style: context.text.bodySmall,
             ),
             SizedBox(height: space.sm),
             SegmentedChoice<AlertChannel>(
-              semanticLabel: 'Canal de respaldo',
-              selected: contact.fallbackChannel,
-              options: const [
-                SegmentOption(value: AlertChannel.sms, label: 'SMS'),
-                SegmentOption(value: AlertChannel.whatsapp, label: 'WhatsApp'),
+              semanticLabel: contact.hasApp ? 'Canal de respaldo' : 'Canal',
+              selected: contact.channel,
+              options: [
+                for (final c in contact.availableChannels)
+                  if (c != AlertChannel.push)
+                    SegmentOption(value: c, label: alertChannelLabel(c)),
               ],
-              onChanged: (c) =>
-                  _run(() => vm.setContactFallback(contact.id, c)),
+              onChanged: (c) => _run(() => vm.setContactChannel(contact.id, c)),
             ),
             SizedBox(height: space.sm),
             Text(
-              'La entrega depende de que la persona tenga la app o un '
-              'número que funcione.',
+              contact.hasApp
+                  ? 'La entrega depende de que la persona tenga la app o un '
+                        'número que funcione.'
+                  : 'QHAWIX no envía estos mensajes desde un servidor: '
+                        'depende de que tú los envíes y de que el número '
+                        'funcione.',
               style: context.text.bodySmall?.copyWith(
                 color: context.qColors.onSurfaceMuted,
               ),

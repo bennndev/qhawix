@@ -25,12 +25,13 @@ class ContactRow extends StatelessWidget {
     final space = context.space;
     final colors = context.qColors;
     final style = contactStatusStyle(contact.status);
+    final kind = contactKindStyle(contact.kind);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Semantics(
           button: true,
-          label: '${contact.name}, ${style.label}',
+          label: '${contact.name}, ${kind.label}, ${style.label}',
           excludeSemantics: true,
           onTap: onTap,
           child: InkWell(
@@ -60,13 +61,27 @@ class ContactRow extends StatelessWidget {
                             ),
                           ),
                           SizedBox(height: space.xs),
-                          Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: StatusChip(
-                              label: style.label,
-                              icon: style.icon,
-                              tone: style.tone,
-                            ),
+                          Wrap(
+                            spacing: space.sm,
+                            runSpacing: space.xs,
+                            children: [
+                              StatusChip(
+                                label: kind.label,
+                                icon: kind.icon,
+                                tone: kind.tone,
+                              ),
+                              StatusChip(
+                                label: style.label,
+                                icon: style.icon,
+                                tone: style.tone,
+                              ),
+                              if (contact.installInvitePending)
+                                StatusChip(
+                                  label: installInvitePendingStyle.label,
+                                  icon: installInvitePendingStyle.icon,
+                                  tone: installInvitePendingStyle.tone,
+                                ),
+                            ],
                           ),
                         ],
                       ),

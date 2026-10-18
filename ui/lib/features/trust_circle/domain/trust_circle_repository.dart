@@ -10,18 +10,24 @@ import 'trust_contact.dart';
 abstract interface class TrustCircleRepository {
   Future<TrustCircleSnapshot> load();
 
-  /// Creates an invitation. The contact stays `invited` until they consent.
-  Future<ActionResult> inviteContact({
+  /// Adds a phone-only contact, active at once. Nothing is sent: no
+  /// invitation and no message.
+  Future<ActionResult> addContact({
     required String name,
     required String phone,
   });
+
+  /// Optional: invites a phone-only contact to install QHAWIX. Adding a
+  /// contact never calls this.
+  Future<ActionResult> inviteToInstall(String contactId);
 
   Future<ActionResult> updatePermissions(
     String contactId,
     ContactPermissions permissions,
   );
 
-  Future<ActionResult> setContactFallback(
+  /// Sets the contact's channel (phone-only) or its fallback after push.
+  Future<ActionResult> setContactChannel(
     String contactId,
     AlertChannel channel,
   );

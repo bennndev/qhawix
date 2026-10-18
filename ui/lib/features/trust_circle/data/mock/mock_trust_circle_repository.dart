@@ -15,33 +15,34 @@ class MockTrustCircleRepository implements TrustCircleRepository {
   MockTrustCircleRepository({required Clock clock}) : _clock = clock {
     final now = _clock.now();
     _contacts = [
-      const TrustContact(
+      TrustContact(
         id: 'c1',
         name: 'Ana Ejemplo',
         phone: '+51 000 000 001',
-        status: ContactStatus.active,
-        permissions: ContactPermissions(
+        kind: ContactKind.appUser,
+        permissions: const ContactPermissions(
           mayRequestRemoteRefuge: true,
           maySeeTemporaryLocation: true,
         ),
       ),
-      const TrustContact(
+      TrustContact(
         id: 'c2',
-        name: 'Beto Ejemplo',
+        name: 'Mamá (ejemplo)',
         phone: '+51 000 000 002',
-        status: ContactStatus.active,
-        fallbackChannel: AlertChannel.whatsapp,
+        permissions: const ContactPermissions(maySeeTemporaryLocation: true),
+        channel: AlertChannel.whatsapp,
       ),
-      const TrustContact(
+      TrustContact(
         id: 'c3',
         name: 'Carla Ejemplo',
         phone: '+51 000 000 003',
-        status: ContactStatus.invited,
+        installInvitePending: true,
       ),
-      const TrustContact(
+      TrustContact(
         id: 'c4',
         name: 'Dani Ejemplo',
         phone: '+51 000 000 004',
+        kind: ContactKind.appUser,
         status: ContactStatus.paused,
       ),
     ];
@@ -88,7 +89,7 @@ class MockTrustCircleRepository implements TrustCircleRepository {
   );
 
   @override
-  Future<ActionResult> inviteContact({
+  Future<ActionResult> addContact({
     required String name,
     required String phone,
   }) async {
@@ -102,18 +103,36 @@ class MockTrustCircleRepository implements TrustCircleRepository {
     }
     _contacts = [
       ..._contacts,
-      TrustContact(
-        id: 'c${_nextId++}',
-        name: cleanName,
-        phone: phone.trim(),
-        status: ContactStatus.invited,
-      ),
+      TrustContact(id: 'c${_nextId++}', name: cleanName, phone: phone.trim()),
     ];
     return const ActionResult(
       ActionOutcome.exampleOnly,
-      'Ejemplo: no se envió ninguna invitación. '
-      'El contacto aparece como invitado solo en esta demostración.',
+      'Ejemplo: contacto agregado solo en esta demostración. '
+      'No se envió ningún mensaje.',
     );
+  }
+
+  @override
+  Future<ActionResult> inviteToInstall(String contactId) async {
+    final contact = _find(contactId);
+    if (contact == null || contact.hasApp) {
+      return const ActionResult(
+        ActionOutcome.rejected,
+        'Este contacto ya tiene la app.',
+      );
+    }
+    _replace(contactId, (c) => c.copyWith(installInvitePending: true));
+    return const ActionResult(
+      ActionOutcome.exampleOnly,
+      'Ejemplo: no se envió ninguna invitación.',
+    );
+  }
+
+  TrustContact? _find(String id) {
+    for (final c in _contacts) {
+      if (c.id == id) return c;
+    }
+    return null;
   }
 
   void _replace(String id, TrustContact Function(TrustContact) change) {
@@ -125,22 +144,28 @@ class MockTrustCircleRepository implements TrustCircleRepository {
     String contactId,
     ContactPermissions permissions,
   ) async {
+    final contact = _find(contactId);
+    final violation = contact?.permissionViolation(permissions);
+    if (violation != null) {
+      return ActionResult(ActionOutcome.rejected, violation);
+    }
     _replace(contactId, (c) => c.copyWith(permissions: permissions));
     return _saved;
   }
 
   @override
-  Future<ActionResult> setContactFallback(
+  Future<ActionResult> setContactChannel(
     String contactId,
     AlertChannel channel,
   ) async {
-    if (channel == AlertChannel.push) {
-      return const ActionResult(
+    final violation = _find(contactId)?.channelViolation(channel);
+    if (violation != null || channel == AlertChannel.push) {
+      return ActionResult(
         ActionOutcome.rejected,
-        'Las notificaciones push siempre van primero.',
+        violation ?? 'Las notificaciones push siempre van primero.',
       );
     }
-    _replace(contactId, (c) => c.copyWith(fallbackChannel: channel));
+    _replace(contactId, (c) => c.copyWith(channel: channel));
     return _saved;
   }
 
@@ -204,7 +229,7 @@ class MockTrustCircleRepository implements TrustCircleRepository {
     }
     return const ActionResult(
       ActionOutcome.exampleOnly,
-      '$_noNotice No se compartió tu ubicación y nadie fue contactado.',
+      '$_noNotice No se preparó ningún mensaje ni se compartió tu ubicación.',
     );
   }
 

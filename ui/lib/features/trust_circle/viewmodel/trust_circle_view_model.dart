@@ -95,12 +95,14 @@ class TrustCircleViewModel extends ChangeNotifier {
     return future;
   }
 
-  Future<ActionResult> inviteContact({
+  Future<ActionResult> addContact({
     required String name,
     required String phone,
-  }) => _command(
-    'invite',
-    () => _repository.inviteContact(name: name, phone: phone),
+  }) => _command('add', () => _repository.addContact(name: name, phone: phone));
+
+  Future<ActionResult> inviteToInstall(String contactId) => _command(
+    'install-invite:$contactId',
+    () => _repository.inviteToInstall(contactId),
   );
 
   Future<ActionResult> updatePermissions(
@@ -111,12 +113,12 @@ class TrustCircleViewModel extends ChangeNotifier {
     () => _repository.updatePermissions(contactId, permissions),
   );
 
-  Future<ActionResult> setContactFallback(
+  Future<ActionResult> setContactChannel(
     String contactId,
     AlertChannel channel,
   ) => _command(
-    'fallback:$contactId',
-    () => _repository.setContactFallback(contactId, channel),
+    'channel:$contactId',
+    () => _repository.setContactChannel(contactId, channel),
   );
 
   Future<ActionResult> setContactPaused(

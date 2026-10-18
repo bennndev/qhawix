@@ -8,11 +8,14 @@ import '../../../core/widgets/qhawix_inputs.dart';
 import '../../../core/widgets/section_card.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../domain/action_result.dart';
+import '../domain/trust_contact.dart';
 import '../viewmodel/trust_circle_view_model.dart';
+import 'labels.dart';
 import 'trust_circle_scaffold.dart';
 
-/// The person types a name and a number. QHAWIX never reads the phone's
-/// contacts. The contact stays "invited" until they accept.
+/// The person types a name and a number. The contact is added at once and
+/// stays on the device: no invitation, no message, and QHAWIX never reads the
+/// phone's contacts. The person does not need the app.
 class AddContactScreen extends StatefulWidget {
   const AddContactScreen({super.key});
 
@@ -24,10 +27,10 @@ class _AddContactScreenState extends State<AddContactScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   ActionResult? _result;
-  String? _invitedName;
+  String? _addedName;
   String? _nameError;
   String? _phoneError;
-  bool _sending = false;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -36,7 +39,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
     super.dispose();
   }
 
-  Future<void> _invite() async {
+  Future<void> _add() async {
     final name = _name.text.trim();
     final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
     setState(() {
@@ -46,14 +49,14 @@ class _AddContactScreenState extends State<AddContactScreen> {
           : null;
     });
     if (_nameError != null || _phoneError != null) return;
-    setState(() => _sending = true);
+    setState(() => _saving = true);
     final vm = context.read<TrustCircleViewModel>();
-    final result = await vm.inviteContact(name: name, phone: _phone.text);
+    final result = await vm.addContact(name: name, phone: _phone.text);
     if (!mounted) return;
     setState(() {
-      _sending = false;
+      _saving = false;
       _result = result;
-      if (!result.isRejected) _invitedName = name;
+      if (!result.isRejected) _addedName = name;
     });
   }
 
@@ -62,21 +65,26 @@ class _AddContactScreenState extends State<AddContactScreen> {
     _phone.clear();
     setState(() {
       _result = null;
-      _invitedName = null;
+      _addedName = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final pending = _invitedName != null;
+    final added = _addedName != null;
+    final space = context.space;
+    final active = contactStatusStyle(ContactStatus.active);
+    final kind = contactKindStyle(ContactKind.phoneOnly);
     return TrustCircleScaffold(
       title: 'Agregar contacto',
       children: [
         const PageHeader(
-          title: 'Invita a alguien de confianza',
-          subtitle: 'Escribe sus datos tú mismo: QHAWIX no lee tu agenda.',
+          title: 'Agrega a alguien de confianza',
+          subtitle:
+              'Escribe su nombre y su número. No necesita tener la app ni '
+              'recibir una invitación.',
         ),
-        if (!pending) ...[
+        if (!added) ...[
           QhawixTextField(
             label: 'Nombre',
             controller: _name,
@@ -90,62 +98,72 @@ class _AddContactScreenState extends State<AddContactScreen> {
             errorText: _phoneError,
           ),
         ],
-        const _ConsentExplanation(),
         if (_result != null) ActionResultBanner(result: _result!),
-        if (pending)
+        if (added)
           SectionCard(
-            title: 'Invitación pendiente',
+            title: 'Contacto agregado',
             children: [
-              Text(_invitedName!, style: context.text.bodyMedium),
-              SizedBox(height: context.space.sm),
-              const Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: StatusChip(
-                  label: 'Invitación pendiente',
-                  icon: Icons.hourglass_empty,
-                  tone: StatusTone.caution,
-                ),
+              Text(_addedName!, style: context.text.bodyMedium),
+              SizedBox(height: space.sm),
+              Wrap(
+                spacing: space.sm,
+                runSpacing: space.xs,
+                children: [
+                  StatusChip(
+                    label: active.label,
+                    icon: active.icon,
+                    tone: active.tone,
+                  ),
+                  StatusChip(
+                    label: kind.label,
+                    icon: kind.icon,
+                    tone: kind.tone,
+                  ),
+                ],
               ),
-              SizedBox(height: context.space.sm),
+              SizedBox(height: space.sm),
               Text(
-                'No recibe avisos hasta que acepte.',
+                'Queda guardado en tu teléfono.',
                 style: context.text.bodySmall?.copyWith(
                   color: context.qColors.onSurfaceMuted,
                 ),
               ),
             ],
           ),
-        if (pending) ...[
+        const _HeadsUpNote(),
+        if (added) ...[
           PrimaryButton(
             label: 'Listo',
             onPressed: () => Navigator.of(context).pop(),
           ),
-          SecondaryButton(label: 'Invitar a otra persona', onPressed: _another),
+          SecondaryButton(label: 'Agregar a otra persona', onPressed: _another),
         ] else
           PrimaryButton(
-            label: 'Crear invitación',
+            label: 'Agregar contacto',
             icon: Icons.person_add_alt_outlined,
-            loading: _sending,
-            onPressed: _invite,
+            loading: _saving,
+            onPressed: _add,
           ),
       ],
     );
   }
 }
 
-class _ConsentExplanation extends StatelessWidget {
-  const _ConsentExplanation();
+class _HeadsUpNote extends StatelessWidget {
+  const _HeadsUpNote();
 
   @override
   Widget build(BuildContext context) {
     final space = context.space;
     const points = [
-      'La persona recibe una invitación y decide si acepta.',
-      'Hasta que acepte queda como invitada: no recibe avisos ni ve nada.',
+      'Avísale que la agregaste: si hay una alerta, puede recibir mensajes '
+          'tuyos.',
+      'Sin la app, los mensajes van por SMS o WhatsApp. Se preparan en tu '
+          'teléfono y los envías tú; QHAWIX no escribe a nadie por su cuenta.',
       'Puedes pausarla o quitarla cuando quieras.',
     ];
     return SectionCard(
-      title: 'Consentimiento mutuo',
+      title: 'Antes de seguir',
       children: [
         for (final point in points)
           Padding(

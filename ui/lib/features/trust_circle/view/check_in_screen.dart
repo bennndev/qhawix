@@ -128,6 +128,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         '$recipients ${recipients == 1 ? 'contacto activo' : 'contactos activos'}.',
               style: context.text.bodySmall,
             ),
+            for (final contact in vm.reachableContacts.where((c) => !c.hasApp))
+              Padding(
+                padding: EdgeInsets.only(top: space.sm),
+                child: Text(
+                  '${contact.name}: sin la app, el servidor no le avisa solo. '
+                  'Tendrías que escribirle tú.',
+                  style: context.text.bodySmall,
+                ),
+              ),
             SizedBox(height: space.sm),
             Text(
               'La entrega depende de la app y del número de cada contacto. '

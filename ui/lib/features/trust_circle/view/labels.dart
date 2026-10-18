@@ -12,11 +12,6 @@ import '../domain/trust_contact.dart';
 ({String label, IconData icon, StatusTone tone}) contactStatusStyle(
   ContactStatus status,
 ) => switch (status) {
-  ContactStatus.invited => (
-    label: 'Invitación pendiente',
-    icon: Icons.hourglass_empty,
-    tone: StatusTone.caution,
-  ),
   ContactStatus.active => (
     label: 'Activo',
     icon: Icons.check_circle_outline,
@@ -28,6 +23,43 @@ import '../domain/trust_contact.dart';
     tone: StatusTone.neutral,
   ),
 };
+
+({String label, IconData icon, StatusTone tone}) contactKindStyle(
+  ContactKind kind,
+) => switch (kind) {
+  ContactKind.appUser => (
+    label: 'Con la app',
+    icon: Icons.smartphone,
+    tone: StatusTone.accent,
+  ),
+  ContactKind.phoneOnly => (
+    label: 'Sin la app',
+    icon: Icons.sms_outlined,
+    tone: StatusTone.neutral,
+  ),
+};
+
+/// Chip of the optional "install QHAWIX" invitation that is still open.
+const installInvitePendingStyle = (
+  label: 'Invitación a instalar pendiente',
+  icon: Icons.hourglass_empty,
+  tone: StatusTone.caution,
+);
+
+/// One line saying what a recipient gets, and what needs the app.
+String recipientCapability(TrustContact contact) {
+  if (contact.hasApp) {
+    return contact.permissions.maySeeTemporaryLocation
+        ? 'Con la app: notificación y ubicación temporal en vivo.'
+        : 'Con la app: notificación, sin ubicación.';
+  }
+  final channel = alertChannelLabel(contact.channel);
+  return contact.permissions.maySeeTemporaryLocation
+      ? 'Sin la app: $channel con tu ubicación del momento. '
+            'La ubicación en vivo requiere la app.'
+      : 'Sin la app: $channel sin ubicación. '
+            'La ubicación en vivo requiere la app.';
+}
 
 ({String label, IconData icon, StatusTone tone}) checkInStatusStyle(
   CheckInStatus? status,

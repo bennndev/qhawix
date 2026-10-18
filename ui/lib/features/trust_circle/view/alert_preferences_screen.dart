@@ -45,9 +45,9 @@ class _AlertPreferencesScreenState extends State<AlertPreferencesScreen> {
         ),
         const StatusBanner(
           message:
-              'La entrega depende de que tu contacto tenga la app instalada '
-              'o un número que funcione. QHAWIX no puede garantizar que '
-              'alguien lea el aviso.',
+              'La entrega depende de que tu contacto tenga la app o un número '
+              'que funcione, y de que tú envíes los mensajes SMS o WhatsApp. '
+              'QHAWIX no puede garantizar que alguien lea el aviso.',
           kind: StatusBannerKind.caution,
         ),
         for (final kind in AlertEventKind.values)
@@ -72,6 +72,10 @@ class _AlertPreferencesScreenState extends State<AlertPreferencesScreen> {
                 for (var i = 0; i < reachable.length; i++)
                   ToggleRow(
                     title: reachable[i].name,
+                    description: reachable[i].hasApp
+                        ? null
+                        : 'Sin la app: SMS o WhatsApp que envías tú desde tu '
+                              'teléfono.',
                     value: prefs.recipientsOf(kind).contains(reachable[i].id),
                     showDivider: i < reachable.length - 1,
                     onChanged: (on) {
@@ -88,8 +92,9 @@ class _AlertPreferencesScreenState extends State<AlertPreferencesScreen> {
           title: 'Si la notificación push no llega',
           children: [
             Text(
-              'Primero se envía una notificación push. Si no se puede '
-              'entregar, se usa:',
+              'Para quien tiene la app, primero va una notificación push. Si '
+              'no se puede entregar, se usa este canal. Quien no tiene la app '
+              'usa siempre el canal de su ficha.',
               style: context.text.bodySmall,
             ),
             SizedBox(height: context.space.sm),

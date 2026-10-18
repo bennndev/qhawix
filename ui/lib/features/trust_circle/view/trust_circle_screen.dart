@@ -52,9 +52,7 @@ class TrustCircleScreen extends StatelessWidget {
     }
     final contacts = vm.contacts;
     final active = contacts.where((c) => c.isActive).length;
-    final invited = contacts
-        .where((c) => c.status == ContactStatus.invited)
-        .length;
+    final withApp = contacts.where((c) => c.hasApp).length;
     final paused = contacts
         .where((c) => c.status == ContactStatus.paused)
         .length;
@@ -65,13 +63,15 @@ class TrustCircleScreen extends StatelessWidget {
           title: 'Tu red de confianza',
           subtitle:
               'Personas que elegiste para avisarles y coordinar contigo. '
-              'Cada una acepta antes de entrar.',
+              'No necesitan tener la app.',
         ),
         SummaryPanel(
           icon: Icons.group_outlined,
           label: 'Estado del círculo',
           value: '$active de ${contacts.length} activos',
-          caption: '$invited con invitación pendiente · $paused en pausa',
+          caption:
+              '$withApp con la app · ${contacts.length - withApp} sin la app · '
+              '$paused en pausa',
         ),
         if (vm.pendingRequests.isNotEmpty)
           SectionCard(
@@ -128,8 +128,8 @@ class TrustCircleScreen extends StatelessWidget {
                 icon: Icons.group_add_outlined,
                 title: 'Aún no tienes contactos',
                 message:
-                    'Agrega a alguien de confianza. Recibirá una invitación '
-                    'y entra solo si acepta.',
+                    'Agrega a alguien de confianza con su nombre y su número. '
+                    'No necesita tener la app.',
               )
             else
               for (var i = 0; i < contacts.length; i++)

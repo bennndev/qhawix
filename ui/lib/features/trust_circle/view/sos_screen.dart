@@ -64,7 +64,8 @@ class _SosScreenState extends State<SosScreen> {
           message:
               'QHAWIX avisa a las personas que elijas, pero no garantiza una '
               'respuesta de emergencia. Si estás en peligro, llama también a '
-              'los servicios de emergencia.',
+              'los servicios de emergencia. A quien no tiene la app el '
+              'mensaje se le prepara en tu teléfono y lo envías tú.',
           kind: StatusBannerKind.caution,
         ),
         SectionCard(
@@ -79,9 +80,7 @@ class _SosScreenState extends State<SosScreen> {
               for (var i = 0; i < reachable.length; i++)
                 ToggleRow(
                   title: reachable[i].name,
-                  description: reachable[i].permissions.maySeeTemporaryLocation
-                      ? 'Verá tu ubicación temporal.'
-                      : 'Recibe el aviso, sin ubicación.',
+                  description: recipientCapability(reachable[i]),
                   value: selected.contains(reachable[i].id),
                   showDivider: i < reachable.length - 1,
                   onChanged: done
@@ -100,8 +99,9 @@ class _SosScreenState extends State<SosScreen> {
           title: 'Ubicación temporal',
           children: [
             Text(
-              'Se comparte solo con quienes tienen ese permiso y se detiene '
-              'sola al terminar el tiempo.',
+              'Con la app, se comparte en vivo solo con quienes tienen ese '
+              'permiso y se detiene sola al terminar el tiempo. Por SMS o '
+              'WhatsApp va solo la ubicación del momento del envío.',
               style: context.text.bodySmall,
             ),
             SizedBox(height: space.sm),

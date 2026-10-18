@@ -43,36 +43,147 @@ void main() {
 
   tearDown(() => vm.dispose());
 
-  test('loads the example circle with the three contact states', () {
+  test('loads the example circle with both kinds of contact', () {
     expect(vm.contacts.map((c) => c.status).toSet(), {
       ContactStatus.active,
-      ContactStatus.invited,
       ContactStatus.paused,
+    });
+    expect(vm.contacts.map((c) => c.kind).toSet(), {
+      ContactKind.phoneOnly,
+      ContactKind.appUser,
     });
     expect(vm.pendingRequests, hasLength(1));
     expect(vm.hasKeyword, isFalse);
   });
 
-  test('only active contacts with alerts enabled are reachable', () {
-    expect(vm.reachableContacts.map((c) => c.id), ['c1', 'c2']);
+  test('phone-only contacts are reachable like app contacts', () {
+    expect(vm.reachableContacts.map((c) => c.id), ['c1', 'c2', 'c3']);
   });
 
-  test('an invitation stays invited and says nothing was sent', () async {
-    final result = await vm.inviteContact(
-      name: 'Eli Ejemplo',
-      phone: '+51 000 000 009',
-    );
-    expect(result.outcome, ActionOutcome.exampleOnly);
-    expect(result.message, contains('no se envió ninguna invitación'));
-    expect(result.message, isNot(matches(claimsDelivery)));
-    expect(vm.contacts.last.status, ContactStatus.invited);
-  });
+  test(
+    'adding a contact is active and phone-only, with nothing sent',
+    () async {
+      final result = await vm.addContact(
+        name: 'Eli Ejemplo',
+        phone: '+51 000 000 009',
+      );
+      expect(result.outcome, ActionOutcome.exampleOnly);
+      expect(result.message, contains('No se envió ningún mensaje'));
+      expect(result.message, isNot(matches(claimsDelivery)));
+      final added = vm.contacts.last;
+      expect(added.status, ContactStatus.active);
+      expect(added.kind, ContactKind.phoneOnly);
+      expect(added.installInvitePending, isFalse);
+      expect(added.channel, isNot(AlertChannel.push));
+    },
+  );
 
-  test('an invitation with missing data is rejected and adds nobody', () async {
+  test('adding a contact with missing data is rejected', () async {
     final before = vm.contacts.length;
-    final result = await vm.inviteContact(name: ' ', phone: '12');
+    final result = await vm.addContact(name: ' ', phone: '12');
     expect(result.isRejected, isTrue);
     expect(vm.contacts, hasLength(before));
+  });
+
+  group('contact kinds', () {
+    test('a phone-only contact cannot request remote Refuge', () async {
+      final contact = vm.contactById('c2')!;
+      expect(contact.canRequestRemoteRefuge, isFalse);
+      expect(
+        contact.permissionViolation(
+          const ContactPermissions(mayRequestRemoteRefuge: true),
+        ),
+        isNotNull,
+      );
+      final result = await vm.updatePermissions(
+        'c2',
+        const ContactPermissions(mayRequestRemoteRefuge: true),
+      );
+      expect(result.isRejected, isTrue);
+      expect(vm.contactById('c2')!.permissions.mayRequestRemoteRefuge, isFalse);
+    });
+
+    test(
+      'the domain refuses to build a phone-only contact with that right',
+      () {
+        expect(
+          () => TrustContact(
+            id: 'x',
+            name: 'X',
+            phone: '1',
+            permissions: const ContactPermissions(mayRequestRemoteRefuge: true),
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+      },
+    );
+
+    test('an app contact may request remote Refuge', () async {
+      final result = await vm.updatePermissions(
+        'c4',
+        const ContactPermissions(mayRequestRemoteRefuge: true),
+      );
+      expect(result.isRejected, isFalse);
+      expect(vm.contactById('c4')!.permissions.mayRequestRemoteRefuge, isTrue);
+    });
+
+    test('channel options depend on the kind', () {
+      expect(vm.contactById('c2')!.availableChannels, [
+        AlertChannel.sms,
+        AlertChannel.whatsapp,
+      ]);
+      expect(vm.contactById('c1')!.availableChannels, [
+        AlertChannel.push,
+        AlertChannel.sms,
+        AlertChannel.whatsapp,
+      ]);
+    });
+
+    test(
+      'push is refused for a phone-only contact and as a fallback',
+      () async {
+        final phoneOnly = await vm.setContactChannel('c2', AlertChannel.push);
+        expect(phoneOnly.isRejected, isTrue);
+        expect(phoneOnly.message, contains('Sin la app'));
+        final appUser = await vm.setContactChannel('c1', AlertChannel.push);
+        expect(appUser.isRejected, isTrue);
+        expect(vm.contactById('c2')!.channel, AlertChannel.whatsapp);
+        expect(vm.contactById('c1')!.channel, AlertChannel.sms);
+      },
+    );
+
+    test('a phone-only contact can switch between SMS and WhatsApp', () async {
+      await vm.setContactChannel('c2', AlertChannel.sms);
+      expect(vm.contactById('c2')!.channel, AlertChannel.sms);
+    });
+
+    test('only phone-only contacts get live location limits', () {
+      expect(vm.contactById('c2')!.canSeeLiveLocation, isFalse);
+      expect(vm.contactById('c1')!.canSeeLiveLocation, isTrue);
+    });
+  });
+
+  group('optional invitation to install', () {
+    test('marks the contact pending and says nothing was sent', () async {
+      final result = await vm.inviteToInstall('c2');
+      expect(result.outcome, ActionOutcome.exampleOnly);
+      expect(result.message, 'Ejemplo: no se envió ninguna invitación.');
+      expect(result.message, isNot(matches(claimsDelivery)));
+      final contact = vm.contactById('c2')!;
+      expect(contact.installInvitePending, isTrue);
+      expect(contact.kind, ContactKind.phoneOnly);
+      expect(contact.status, ContactStatus.active);
+    });
+
+    test('is refused for a contact that already has the app', () async {
+      final result = await vm.inviteToInstall('c1');
+      expect(result.isRejected, isTrue);
+    });
+
+    test('adding a contact never starts it', () async {
+      await vm.addContact(name: 'Eli Ejemplo', phone: '+51 000 000 009');
+      expect(vm.contacts.where((c) => c.installInvitePending).length, 1);
+    });
   });
 
   test('pausing and resuming changes the contact status', () async {
@@ -90,12 +201,6 @@ void main() {
       vm.alertPreferences.recipientsOf(AlertEventKind.paymentHold),
       isEmpty,
     );
-  });
-
-  test('push can never be the fallback channel', () async {
-    final result = await vm.setContactFallback('c1', AlertChannel.push);
-    expect(result.isRejected, isTrue);
-    expect(vm.contactById('c1')!.fallbackChannel, AlertChannel.sms);
   });
 
   test(
@@ -117,8 +222,8 @@ void main() {
   );
 
   test('a double tap runs the command once', () async {
-    final a = vm.inviteContact(name: 'Eli Ejemplo', phone: '+51 000 000 009');
-    final b = vm.inviteContact(name: 'Eli Ejemplo', phone: '+51 000 000 009');
+    final a = vm.addContact(name: 'Eli Ejemplo', phone: '+51 000 000 009');
+    final b = vm.addContact(name: 'Eli Ejemplo', phone: '+51 000 000 009');
     await Future.wait([a, b]);
     expect(vm.contacts.where((c) => c.name == 'Eli Ejemplo'), hasLength(1));
   });

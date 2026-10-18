@@ -15,8 +15,8 @@ flutter run -t lib/dev/trust_circle_demo_main.dart
 | Screen | File | Reached from |
 | --- | --- | --- |
 | Circle overview (entry of the "Red" tab) | `view/trust_circle_screen.dart` | tab |
-| Add contact + pending invitation | `view/add_contact_screen.dart` | overview |
-| Contact detail (permissions, channels, pause, remove) | `view/contact_detail_screen.dart` | contact row |
+| Add contact (active at once, nothing sent) | `view/add_contact_screen.dart` | overview |
+| Contact detail (permissions, channels, optional install invite, pause, remove) | `view/contact_detail_screen.dart` | contact row |
 | Alert preferences | `view/alert_preferences_screen.dart` | overview |
 | SOS | `view/sos_screen.dart` | overview |
 | Check-in and safe arrival | `view/check_in_screen.dart` | overview |
@@ -28,6 +28,36 @@ Layers: `domain/` (pure Dart, `Clock` port, `TrustCircleRepository` port) ->
 `data/mock/` -> `viewmodel/` (`TrustCircleViewModel`, `FamilyKeywordViewModel`,
 both discard stale responses and run a command once on double tap) -> `view/`.
 `trustCircleProviders()` wires them; it accepts a repository and a clock for tests.
+
+## Contact kinds
+
+A trusted contact does not need the app and is never invited when added. The
+earlier "invitation and mutual consent" rule is replaced by two kinds
+(`ContactKind` in `domain/trust_contact.dart`):
+
+- **`phoneOnly`** (default when adding): a name and a number typed by the
+  person, `active` at once, nothing sent. Reached by SMS or WhatsApp that is
+  composed on the person's own phone and sent by the person.
+- **`appUser`**: has QHAWIX. Reached only through the optional action
+  "Invitar a instalar QHAWIX" in the contact detail. While the invite is open
+  the contact stays `phoneOnly` and `active` and shows an "Invitación a
+  instalar pendiente" chip (`installInvitePending`). The mock never accepts it.
+
+The rules live in the domain (`TrustContact` asserts and
+`permissionViolation` / `channelViolation`), and the mock repository enforces
+them with a rejected `ActionResult`; the UI only reflects them.
+
+| Capability | `phoneOnly` | `appUser` |
+| --- | --- | --- |
+| Channels | SMS or WhatsApp (person sends) | push first, SMS or WhatsApp as fallback |
+| Alerts and SOS message | yes, composed on the user's phone | yes |
+| Location | one-time, inside the message when sent (permission "Incluir mi ubicación...") | live temporary location during an SOS |
+| May request remote Refuge | no: shown off and disabled with the reason | yes, person verifies each time |
+| Overdue check-in alert from a server | no: the person writes to them | yes |
+| Optional "Invitar a instalar QHAWIX" | yes | not shown |
+
+The mock only states that nothing was sent ("Ejemplo: no se envió ninguna
+invitación.", "No se envió ningún mensaje."); the real mechanism comes later.
 
 ## Lovable component -> Flutter widget
 

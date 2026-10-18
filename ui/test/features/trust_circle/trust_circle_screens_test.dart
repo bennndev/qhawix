@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qhawix/core/widgets/guardian_mascot/guardian_mascot.dart';
 import 'package:qhawix/core/widgets/mock_data_banner.dart';
+import 'package:qhawix/core/widgets/toggle_row.dart';
 import 'package:qhawix/features/trust_circle/domain/alert_preferences.dart';
 import 'package:qhawix/features/trust_circle/domain/check_in.dart';
 import 'package:qhawix/features/trust_circle/domain/trust_contact.dart';
@@ -18,6 +19,13 @@ import 'package:qhawix/features/trust_circle/view/trust_circle_screen.dart';
 import 'test_support.dart';
 
 const _tall = Size(360, 6000);
+
+final _addButton = find.widgetWithText(FilledButton, 'Agregar contacto');
+
+final _remoteRefugeRow = find.ancestor(
+  of: find.text('Puede pedir mi Refugio'),
+  matching: find.byType(ToggleRow),
+);
 
 final _screens = <String, Widget Function()>{
   'overview': () => const TrustCircleScreen(),
@@ -87,15 +95,27 @@ void main() {
   });
 
   group('overview', () {
-    testWidgets('lists contacts with their consent state as text', (
+    testWidgets('lists contacts with their kind and state as text', (
       tester,
     ) async {
       await pumpModule(tester, const TrustCircleScreen(), size: _tall);
       expect(find.text('Ana Ejemplo'), findsOneWidget);
-      expect(find.text('Activo'), findsNWidgets(2));
-      expect(find.text('Invitación pendiente'), findsOneWidget);
+      expect(find.text('Mamá (ejemplo)'), findsOneWidget);
+      expect(find.text('Activo'), findsNWidgets(3));
       expect(find.text('En pausa'), findsOneWidget);
-      expect(find.text('2 de 4 activos'), findsOneWidget);
+      expect(find.text('Con la app'), findsNWidgets(2));
+      expect(find.text('Sin la app'), findsNWidgets(2));
+      expect(find.text('3 de 4 activos'), findsOneWidget);
+    });
+
+    testWidgets('has no waiting-for-acceptance wording for contacts', (
+      tester,
+    ) async {
+      await pumpModule(tester, const TrustCircleScreen(), size: _tall);
+      expect(find.text('Invitación pendiente'), findsNothing);
+      expect(find.textContaining('acepte'), findsNothing);
+      expect(find.textContaining('acepta'), findsNothing);
+      expect(find.text('Invitación a instalar pendiente'), findsOneWidget);
     });
 
     testWidgets('shows the request waiting and the quick actions', (
@@ -127,7 +147,7 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
       await _tapText(tester, 'Agregar contacto');
-      expect(find.text('Invita a alguien de confianza'), findsOneWidget);
+      expect(find.text('Agrega a alguien de confianza'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       await _tapText(tester, 'Ana Ejemplo');
@@ -136,20 +156,22 @@ void main() {
   });
 
   group('add contact', () {
-    testWidgets('explains mutual consent and asks for typed data only', (
-      tester,
-    ) async {
-      await pumpModule(tester, const AddContactScreen());
-      expect(find.text('Consentimiento mutuo'), findsOneWidget);
-      expect(find.byType(TextField), findsNWidgets(2));
-      expect(find.textContaining('no lee tu agenda'), findsOneWidget);
-    });
+    testWidgets(
+      'needs no app and no invitation, and asks for typed data only',
+      (tester) async {
+        await pumpModule(tester, const AddContactScreen(), size: _tall);
+        expect(find.text('Consentimiento mutuo'), findsNothing);
+        expect(find.textContaining('No necesita tener la app'), findsOneWidget);
+        expect(find.byType(TextField), findsNWidgets(2));
+        expect(find.textContaining('Avísale que la agregaste'), findsOneWidget);
+      },
+    );
 
-    testWidgets('asks for the missing data and creates nothing', (
-      tester,
-    ) async {
+    testWidgets('asks for the missing data and adds nobody', (tester) async {
       await pumpModule(tester, const AddContactScreen(), size: _tall);
-      await _tapText(tester, 'Crear invitación');
+      await tester.ensureVisible(_addButton);
+      await tester.tap(_addButton);
+      await tester.pumpAndSettle();
       expect(find.text('Escribe el nombre de la persona.'), findsOneWidget);
       expect(
         find.text('Escribe el número con código de país.'),
@@ -158,21 +180,32 @@ void main() {
       expect(viewModelOf(tester).contacts, hasLength(4));
     });
 
-    testWidgets('shows the pending invitation and the honest result', (
-      tester,
-    ) async {
-      await pumpModule(tester, const AddContactScreen(), size: _tall);
-      await tester.enterText(find.byType(TextField).first, 'Eli Ejemplo');
-      await tester.enterText(find.byType(TextField).last, '+51 000 000 009');
-      await _tapText(tester, 'Crear invitación');
-      expect(find.text('Invitación pendiente'), findsWidgets);
-      expect(find.text('Eli Ejemplo'), findsOneWidget);
-      expect(
-        find.textContaining('no se envió ninguna invitación'),
-        findsOneWidget,
-      );
-      expect(viewModelOf(tester).contacts.last.status, ContactStatus.invited);
-    });
+    testWidgets(
+      'adds the contact active and without the app, sending nothing',
+      (tester) async {
+        await pumpModule(tester, const AddContactScreen(), size: _tall);
+        await tester.enterText(find.byType(TextField).first, 'Eli Ejemplo');
+        await tester.enterText(find.byType(TextField).last, '+51 000 000 009');
+        await tester.ensureVisible(_addButton);
+        await tester.tap(_addButton);
+        await tester.pumpAndSettle();
+        expect(find.text('Contacto agregado'), findsOneWidget);
+        expect(find.text('Eli Ejemplo'), findsOneWidget);
+        expect(find.text('Activo'), findsOneWidget);
+        expect(find.text('Sin la app'), findsOneWidget);
+        expect(
+          find.textContaining('No se envió ningún mensaje'),
+          findsOneWidget,
+        );
+        expect(find.text('Invitación pendiente'), findsNothing);
+        expect(find.text('Invitación a instalar pendiente'), findsNothing);
+        expect(find.textContaining(claimsDelivery), findsNothing);
+        final added = viewModelOf(tester).contacts.last;
+        expect(added.status, ContactStatus.active);
+        expect(added.kind, ContactKind.phoneOnly);
+        expect(added.installInvitePending, isFalse);
+      },
+    );
   });
 
   group('contact detail', () {
@@ -182,18 +215,12 @@ void main() {
         const ContactDetailScreen(contactId: 'c2'),
         size: _tall,
       );
+      final vm = viewModelOf(tester);
+      expect(vm.contactById('c2')!.permissions.maySeeTemporaryLocation, isTrue);
+      await _tapText(tester, 'Incluir mi ubicación en los mensajes de SOS');
       expect(
-        viewModelOf(
-          tester,
-        ).contactById('c2')!.permissions.maySeeTemporaryLocation,
+        vm.contactById('c2')!.permissions.maySeeTemporaryLocation,
         isFalse,
-      );
-      await _tapText(tester, 'Puede ver mi ubicación temporal');
-      expect(
-        viewModelOf(
-          tester,
-        ).contactById('c2')!.permissions.maySeeTemporaryLocation,
-        isTrue,
       );
       expect(
         find.textContaining('Ejemplo: el cambio se guardó solo'),
@@ -201,7 +228,7 @@ void main() {
       );
     });
 
-    testWidgets('keeps push first and lets the person pick the fallback', (
+    testWidgets('an app contact keeps push first and picks the fallback', (
       tester,
     ) async {
       await pumpModule(
@@ -212,9 +239,85 @@ void main() {
       expect(find.textContaining('1.º Notificación push'), findsOneWidget);
       await _tapText(tester, 'WhatsApp');
       expect(
-        viewModelOf(tester).contactById('c1')!.fallbackChannel,
+        viewModelOf(tester).contactById('c1')!.channel,
         AlertChannel.whatsapp,
       );
+    });
+
+    testWidgets(
+      'an app contact can ask for Refuge and is not offered the invite',
+      (tester) async {
+        await pumpModule(
+          tester,
+          const ContactDetailScreen(contactId: 'c1'),
+          size: _tall,
+        );
+        final row = tester.widget<ToggleRow>(_remoteRefugeRow);
+        expect(row.onChanged, isNotNull);
+        expect(row.value, isTrue);
+        expect(find.text('Invitar a instalar QHAWIX'), findsNothing);
+      },
+    );
+
+    testWidgets('a phone-only contact offers SMS and WhatsApp only', (
+      tester,
+    ) async {
+      await pumpModule(
+        tester,
+        const ContactDetailScreen(contactId: 'c2'),
+        size: _tall,
+      );
+      expect(find.text('Sin la app'), findsOneWidget);
+      expect(find.textContaining('1.º'), findsNothing);
+      expect(
+        find.textContaining('Sin la app, los avisos van por SMS'),
+        findsOneWidget,
+      );
+      expect(find.text('SMS'), findsOneWidget);
+      expect(find.text('WhatsApp'), findsOneWidget);
+      expect(find.textContaining('push'), findsNothing);
+      await _tapText(tester, 'SMS');
+      expect(viewModelOf(tester).contactById('c2')!.channel, AlertChannel.sms);
+    });
+
+    testWidgets(
+      'remote Refuge is off and disabled with its reason and the invite',
+      (tester) async {
+        await pumpModule(
+          tester,
+          const ContactDetailScreen(contactId: 'c2'),
+          size: _tall,
+        );
+        final row = tester.widget<ToggleRow>(_remoteRefugeRow);
+        expect(row.value, isFalse);
+        expect(row.onChanged, isNull);
+        expect(
+          find.text('Necesita la app: sin ella no puede pedirlo.'),
+          findsOneWidget,
+        );
+        expect(find.text('Invitar a instalar QHAWIX'), findsOneWidget);
+      },
+    );
+
+    testWidgets('the optional invite stays honest and then shows as pending', (
+      tester,
+    ) async {
+      await pumpModule(
+        tester,
+        const ContactDetailScreen(contactId: 'c2'),
+        size: _tall,
+      );
+      await _tapText(tester, 'Invitar a instalar QHAWIX');
+      expect(
+        find.text('Ejemplo: no se envió ninguna invitación.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining(claimsDelivery), findsNothing);
+      expect(find.text('Invitación a instalar pendiente'), findsOneWidget);
+      expect(find.text('Invitar a instalar QHAWIX'), findsNothing);
+      final contact = viewModelOf(tester).contactById('c2')!;
+      expect(contact.installInvitePending, isTrue);
+      expect(contact.kind, ContactKind.phoneOnly);
     });
 
     testWidgets('pauses and resumes', (tester) async {
@@ -278,13 +381,26 @@ void main() {
       expect(vm.alertPreferences.recipientsOf(AlertEventKind.paymentHold), {
         'c1',
       });
-      await tester.ensureVisible(find.text('Beto Ejemplo').at(1));
-      await tester.tap(find.text('Beto Ejemplo').at(1));
+      await tester.ensureVisible(find.text('Mamá (ejemplo)').at(1));
+      await tester.tap(find.text('Mamá (ejemplo)').at(1));
       await tester.pumpAndSettle();
       expect(vm.alertPreferences.recipientsOf(AlertEventKind.paymentHold), {
         'c1',
         'c2',
       });
+    });
+
+    testWidgets('lets a phone-only contact be a recipient and says how', (
+      tester,
+    ) async {
+      await pumpModule(tester, const AlertPreferencesScreen(), size: _tall);
+      expect(find.text('Mamá (ejemplo)'), findsNWidgets(3));
+      expect(
+        find.text(
+          'Sin la app: SMS o WhatsApp que envías tú desde tu teléfono.',
+        ),
+        findsNWidgets(6),
+      );
     });
 
     testWidgets('changes the fallback channel', (tester) async {
@@ -316,6 +432,20 @@ void main() {
         find.textContaining('no garantiza una respuesta de emergencia'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('says per recipient what needs the app', (tester) async {
+      await pumpModule(tester, const SosScreen(), size: _tall);
+      expect(find.text('Mamá (ejemplo)'), findsOneWidget);
+      expect(
+        find.textContaining('La ubicación en vivo requiere la app.'),
+        findsNWidgets(2),
+      );
+      expect(
+        find.text('Con la app: notificación y ubicación temporal en vivo.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('lo envías tú'), findsOneWidget);
     });
 
     testWidgets('the duration is part of the consent line', (tester) async {
@@ -386,6 +516,17 @@ void main() {
       expect(find.text('Ventana vencida'), findsWidgets);
       expect(find.textContaining('no se avisó a nadie'), findsOneWidget);
       expect(find.textContaining('Qué pasa si vence'), findsOneWidget);
+    });
+
+    testWidgets('says who needs the app to be warned when it is overdue', (
+      tester,
+    ) async {
+      await pumpModule(tester, const CheckInScreen(), size: _tall);
+      expect(
+        find.textContaining('sin la app, el servidor no le avisa solo'),
+        findsNWidgets(2),
+      );
+      expect(find.textContaining('Mamá (ejemplo): sin la app'), findsOneWidget);
     });
 
     testWidgets('confirming marks the arrival', (tester) async {
