@@ -2,7 +2,7 @@
 
 Suite de seguridad personal para Android: protege a la persona de estafas digitales y telefónicas con IA, y **oculta o restringe sus billeteras digitales** cuando el contexto indica que está en peligro físico. *Qhawix* significa "vigía" en quechua.
 
-> **Estado:** especificación y diseño. **Implementación no iniciada**: el repositorio contiene los esqueletos de `ui/` y `api/`, la documentación y la configuración de agentes. Nada de lo descrito abajo existe todavía como código.
+> **Estado:** primera versión local de Sentinel, Escudo QR, Guardian Pago y Bitácora en desarrollo; aún no está validada para compilación ni lista para distribución. La reputación de URL no tiene proveedor configurado y EchoTrap, Refugio, Red de Confianza, AURA y la plataforma siguen pendientes.
 
 **Principio del producto: nada se simula.** Cada función debe actuar sobre el mundo real. Cuando Android o una billetera no permiten una acción, se propone un mecanismo alternativo que llegue al mismo fin y se documenta el límite (ver [Lo que Android no permite](#lo-que-android-no-permite-y-qué-hacemos)).
 
@@ -198,7 +198,7 @@ flutter run --dart-define-from-file=env/local.json
 
 `ui/env/local.json` está ignorado por Git. La clave anónima de Supabase es pública por diseño; las claves de proveedores nunca van en la app ni en el repositorio.
 
-> Verificado sobre el esqueleto: `dart analyze`, `flutter test` y la versión del CLI de Supabase. `supabase start` y `functions serve` no se probaron.
+> Esta primera versión todavía no se ha podido validar con Flutter/Dart en el entorno de trabajo. No se ha generado ni comprobado un APK; el backend Supabase aún no está implementado.
 
 ## Hoja de ruta
 
