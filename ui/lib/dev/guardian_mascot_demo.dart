@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../core/widgets/guardian_mascot/guardian_mascot.dart';
 
 const Map<GuardianMascotState, String> _labels = {
-  GuardianMascotState.idle: 'Reposo',
+  GuardianMascotState.idle: 'Reposo (duerme y escucha)',
   GuardianMascotState.thinking: 'Pensando',
   GuardianMascotState.working: 'Trabajando',
   GuardianMascotState.success: 'Éxito',

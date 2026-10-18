@@ -20,6 +20,7 @@ const _path12 = RigPath([0, 1744.0, 700.0, 1, 1836.0, 700.0, 0, 1790.0, 654.0, 1
 const _path13 = RigPath([0, 374.0, 1000.0, 1, 466.0, 1000.0, 0, 420.0, 954.0, 1, 420.0, 1046.0]);
 const _path14 = RigPath([0, 1594.0, 1130.0, 1, 1686.0, 1130.0, 0, 1640.0, 1084.0, 1, 1640.0, 1176.0]);
 const _path15 = RigPath([0, 1790.0, 150.0, 1, 1790.0, 300.0]);
+const _path16 = RigPath([0, 1600.0, 400.0, 1, 1668.0, 400.0, 1, 1600.0, 480.0, 1, 1668.0, 480.0]);
 
 const GuardianMascotRig kGuardianMascotRig = GuardianMascotRig(
   viewBox: 2000,
@@ -77,6 +78,15 @@ const GuardianMascotRig kGuardianMascotRig = GuardianMascotRig(
       RigNode.group(part: 'bang', bounds: RigBounds(1762.0, 150.0, 1818.0, 413.0), children: [
         RigNode.leaf(RigElement(shape: RigPathShape(_path15), stroke: RigColor.body, strokeWidth: 46.6006)),
         RigNode.leaf(RigElement(shape: RigCircleShape(1790.0, 385.0, 28.0), fill: RigColor.body)),
+      ]),
+      RigNode.group(part: 'z1', bounds: RigBounds(1600.0, 400.0, 1668.0, 480.0), children: [
+        RigNode.leaf(RigElement(shape: RigPathShape(_path16), stroke: RigColor.body, strokeWidth: 22.0)),
+      ]),
+      RigNode.group(part: 'z2', bounds: RigBounds(1600.0, 400.0, 1668.0, 480.0), children: [
+        RigNode.leaf(RigElement(shape: RigPathShape(_path16), stroke: RigColor.body, strokeWidth: 22.0)),
+      ]),
+      RigNode.group(part: 'z3', bounds: RigBounds(1600.0, 400.0, 1668.0, 480.0), children: [
+        RigNode.leaf(RigElement(shape: RigPathShape(_path16), stroke: RigColor.body, strokeWidth: 22.0)),
       ]),
   ],
 );

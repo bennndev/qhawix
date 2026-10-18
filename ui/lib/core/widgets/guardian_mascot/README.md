@@ -20,7 +20,7 @@ GuardianMascot(
 
 | State | Intent | Motion | Trigger |
 | --- | --- | --- | --- |
-| `idle` | Quiet companion | Loop: breathe 4.2 s, glance and blink 6 s | Default; after `success` |
+| `idle` | Light sleeper at rest | Loop 16.8 s: eyes closed, head drooped, breath every 5.6 s; every 8.4 s it hears something: small dip, 6 deg head turn with a lift, one tuft perks (8.5 deg), the eye on that side cracks open, hold, settle. Alternates right, left. Three faint "z" marks drift up | Default; after `success` |
 | `thinking` | Composing | Loop: head tilt 3.6 s, three pulsing dots 1.5 s | A response is being composed |
 | `working` | Bounded analysis | Loop: bounce 0.52 s, scanning eyes, two gears | A bounded task runs |
 | `success` | Done | One-shot 2.8 s: hop, check, sparks, then `idle` | A task finished |
@@ -29,7 +29,12 @@ GuardianMascot(
 | `alert` | Attention, not alarm | One-shot 1.7 s: squash, small head shake, then holds tufts up, wide eyes and a "!" | Something needs attention. Never the only signal: text and the risk badge carry the danger |
 | `stealth` | Discreet | Loop 6 s, body opacity 0.14, 0.7 s blend in and out | Discreet appearance |
 
-The first four equal `pet/animated/src/mascot.spec.json` value for value (tested). The last four
+`thinking`, `working` and `success` equal `pet/animated/src/mascot.spec.json` value for value (tested).
+
+**`idle` is an intentional deviation from the Node rig** (owner request: at rest the owl sleeps and
+listens). The Node copy under `ui/tool/guardian_mascot/source/mascot.spec.json` stays
+byte-identical to `main`; the sleeping `idle` is an override in `source/idle_sleep.spec.json`, which
+the generator applies over the base state. A test pins the deviation and the three equal states. The last four
 live in `ui/tool/guardian_mascot/source/guardian_states.spec.json`, which documents each intent.
 Extra spec fields beyond the Node format: `hold` (a one-shot that stays on its last pose),
 `blendMs` and `exitBlendMs` (per-state blend). Rings, halo and "!" use the body colour only (the
@@ -38,8 +43,11 @@ line colour is invisible on the canvas) and sit behind or in front of the owl.
 ## Behaviour
 
 - **Reduced motion:** `MediaQuery.disableAnimations` freezes each state on its static pose (0 for
-  loops, 0.6 for `success`, 1 for `alert`) with no blend. `success` holds about 1.8 s, then moves
+  loops, 0.6 for `success`, 1 for `alert`) with no blend. For `idle` that is the sleeping pose: eyes
+  closed, head neutral, no "z" marks. `success` holds about 1.8 s, then moves
   on. No ticker runs for frozen loops.
+- **Waking up:** moving from `idle` to any state is the normal blend (`idle` exits over 400 ms, so
+  the eyes open without a pop); entering `idle` takes 500 ms, as if falling asleep.
 - **Background:** the clock stops when the app is hidden or paused and when `TickerMode` is
   disabled; it resumes without a time jump. A held `alert` also stops its clock.
 - **Semantics:** excluded by default. A `semanticLabel` makes it a labelled image, a button when

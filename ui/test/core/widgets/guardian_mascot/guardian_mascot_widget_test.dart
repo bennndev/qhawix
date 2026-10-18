@@ -131,6 +131,40 @@ void main() {
     });
   });
 
+  testWidgets('writes the sleeping idle at four moments when GUARDIAN_MASCOT_PNG_DIR is set', (tester) async {
+    final dir = Platform.environment['GUARDIAN_MASCOT_PNG_DIR'];
+    if (dir == null) return;
+    Directory(dir).createSync(recursive: true);
+    final key = GlobalKey();
+    await tester.pumpWidget(_host(RepaintBoundary(
+      key: key,
+      child: const ColoredBox(
+        color: Colors.white,
+        child: GuardianMascot(
+          state: GuardianMascotState.idle,
+          size: 400,
+          bodyColor: _body,
+          lineColor: _line,
+        ),
+      ),
+    )));
+    Future<void> shot(String name) async {
+      final image = await _render(tester, key);
+      final png = await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.png));
+      File('$dir/$name.png').writeAsBytesSync(png!.buffer.asUint8List());
+    }
+
+    await tester.pump(const Duration(milliseconds: 100));
+    await shot('sleep_1_rest_t0100');
+    await tester.pump(const Duration(milliseconds: 1400));
+    await shot('sleep_2_zmarks_t1500');
+    await tester.pump(const Duration(milliseconds: 4000));
+    await shot('sleep_3_midturn_t5500');
+    await tester.pump(const Duration(milliseconds: 3300));
+    await shot('sleep_4_settled_t8800');
+    await tester.pumpWidget(const SizedBox());
+  });
+
   group('animation lifecycle', () {
     testWidgets('a running state keeps animating and the controller is disposed with the widget',
         (tester) async {

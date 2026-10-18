@@ -10,7 +10,8 @@ import '../../../../tool/guardian_mascot/generate.dart';
 
 const _toolDir = 'tool/guardian_mascot';
 const _widgetDir = 'lib/core/widgets/guardian_mascot';
-const _nodeStates = ['idle', 'thinking', 'working', 'success'];
+// `idle` is NOT here on purpose: the owner asked for a sleeping idle (see the deviation test).
+const _nodeStates = ['thinking', 'working', 'success'];
 const _newStates = ['listening', 'scanning', 'alert', 'stealth'];
 
 Map<String, dynamic> _json(String path) =>
@@ -25,7 +26,7 @@ void main() {
   group('spec', () {
     test('all eight states are valid', () {
       expect(kGuardianMascotSpec.validate(), isEmpty);
-      expect(kGuardianMascotSpec.states.keys, [..._nodeStates, ..._newStates]);
+      expect(kGuardianMascotSpec.states.keys, ['idle', ..._nodeStates, ..._newStates]);
     });
 
     test('the enum matches the spec states one to one', () {
@@ -35,7 +36,20 @@ void main() {
       );
     });
 
-    test('the Node states equal mascot.spec.json value for value', () {
+    test('idle is an intentional, documented deviation from the Node spec (owner request)', () {
+      // The owner asked for the resting state to be a light sleeper that listens, so `idle`
+      // no longer equals pet/animated's idle. The Node copy stays untouched; the override lives
+      // in tool/guardian_mascot/source/idle_sleep.spec.json and is applied by the generator.
+      final dartStates = dartJson['states']! as Map<String, Object?>;
+      final nodeStates = nodeSpec['states'] as Map<String, dynamic>;
+      expect(dartStates['idle'], isNot(equals(nodeStates['idle'])));
+      final override = _json('$_toolDir/source/idle_sleep.spec.json');
+      final idle = (override['overrides'] as Map<String, dynamic>)['idle'] as Map<String, dynamic>;
+      expect(idle['intent'], contains('OWNER-REQUESTED DEVIATION'));
+      expect(File('$_widgetDir/README.md').readAsStringSync(), contains('intentional deviation'));
+    });
+
+    test('thinking, working and success equal mascot.spec.json value for value', () {
       final dartStates = dartJson['states']! as Map<String, Object?>;
       final nodeStates = nodeSpec['states'] as Map<String, dynamic>;
       for (final name in _nodeStates) {
