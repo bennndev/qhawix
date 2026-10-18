@@ -414,14 +414,7 @@ enabled = true
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
 
-[functions.call-control]
-verify_jwt = true
-
-[functions.transcribe]
-verify_jwt = true
-
-[functions.call-intelligence]
-verify_jwt = true
-
-[functions.voice-origin]
-verify_jwt = true
+[functions.qr-reputation]
+# The mobile app is a public client. The function applies durable database quotas
+# and validates every request; the Supabase anon key is only an API identifier.
+verify_jwt = false
