@@ -14,8 +14,7 @@ import 'module_catalog.dart';
 /// Per-module activation: explains purpose and the permissions it will need.
 ///
 /// Does not request system permissions yet for stub modules (honest limit).
-/// Refuge keeps its own wizard. When a module's platform adapter lands, the
-/// Continue action can call the real prompts from this screen.
+/// When a module's platform adapter lands, Continue can call the real prompts.
 class ModuleOnboardingScreen extends StatelessWidget {
   const ModuleOnboardingScreen({super.key, required this.entry});
 

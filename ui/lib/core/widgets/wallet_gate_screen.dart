@@ -11,7 +11,7 @@ String remainingTimeLabel(Duration remaining) {
   return minutes == 1 ? 'Falta 1 minuto' : 'Faltan $minutes minutos';
 }
 
-/// Full-screen pause that covers a wallet app (Refugio and Guardian Pago).
+/// Full-screen pause that covers a wallet app when concealment is active.
 ///
 /// Canvas background, no red, no alarm wording, no padlock imagery and no
 /// QHAWIX wordmark, so it does not announce why it appeared. It states that it

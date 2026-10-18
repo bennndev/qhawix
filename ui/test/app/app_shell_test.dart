@@ -22,7 +22,7 @@ void main() {
     await _settle(tester);
 
     expect(find.text('Tu vigía'), findsOneWidget);
-    expect(find.text('Módulos'), findsOneWidget);
+    expect(find.text('Sentinel'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Sentinel'),
@@ -55,15 +55,16 @@ void main() {
     expect(find.text('EchoTrap'), findsOneWidget);
   });
 
-  testWidgets('Refugio tab opens without generic activation gate', (
+  testWidgets('Red tab opens Trust Circle without activation gate', (
     tester,
   ) async {
     await tester.pumpWidget(_shellUnderTest());
     await _settle(tester);
 
-    await tester.tap(find.text('Refugio'));
+    await tester.tap(find.text('Red'));
     await _settle(tester);
 
-    expect(find.text('Activar Refugio'), findsNothing);
+    expect(find.text('Activar Red de Confianza'), findsNothing);
+    expect(find.text('Red de Confianza'), findsWidgets);
   });
 }

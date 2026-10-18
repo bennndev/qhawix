@@ -28,16 +28,13 @@ class AnalyzeScreen extends StatelessWidget {
               children: [
                 const PageHeader(
                   title: 'Analizar',
-                  subtitle:
-                      'Mensajes, QR y llamadas. Cada módulo pide solo el '
-                      'permiso que necesita cuando lo abres.',
+                  subtitle: 'Mensajes, QR y llamadas.',
                 ),
                 for (final entry in ModuleCatalog.analyzeEntries) ...[
                   ModuleCard(
                     icon: entry.icon,
                     name: entry.name,
                     purpose: entry.purpose,
-                    limitNote: entry.limitNote,
                     onTap: () => openModule(context, entry),
                   ),
                   SizedBox(height: space.sm),

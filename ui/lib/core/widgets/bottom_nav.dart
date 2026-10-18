@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../theme/theme_extensions.dart';
 
-/// One of the five app tabs.
+/// One of the main app tabs.
 enum QhawixTab {
   inicio('Inicio', Icons.home_outlined, Icons.home),
   analizar('Analizar', Icons.document_scanner_outlined, Icons.document_scanner),
-  refugio('Refugio', Icons.shield_outlined, Icons.shield),
   red('Red', Icons.group_outlined, Icons.group),
   bitacora('Bitácora', Icons.menu_book_outlined, Icons.menu_book);
 
@@ -17,7 +16,7 @@ enum QhawixTab {
   final IconData selectedIcon;
 }
 
-/// Bottom navigation with the five tabs.
+/// Bottom navigation with the main tabs.
 ///
 /// Surface fill, 80 dp minimum height that grows with the text scale, a 24 dp
 /// icon above a label that wraps instead of being dropped, and a teal-tint

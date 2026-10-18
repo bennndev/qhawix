@@ -7,7 +7,6 @@ import '../core/widgets/qhawix_buttons.dart';
 import '../core/widgets/status_banner.dart';
 import '../features/aura/view/aura_screen.dart';
 import '../features/echotrap/view/echotrap_screen.dart';
-import '../features/guardian_pay/view/guardian_pay_screen.dart';
 import '../features/privacy/view/privacy_screen.dart';
 import '../features/qr_shield/view/qr_shield_screen.dart';
 import '../features/sentinel/view/sentinel_screen.dart';
@@ -22,13 +21,10 @@ Widget moduleScreenFor(ModuleCatalogEntry entry) {
       return const QrShieldScreen();
     case AppModuleId.echoTrap:
       return const EchoTrapScreen();
-    case AppModuleId.guardianPay:
-      return const GuardianPayScreen();
     case AppModuleId.aura:
       return const AuraScreen();
     case AppModuleId.privacy:
       return const PrivacyScreen();
-    case AppModuleId.refuge:
     case AppModuleId.trustCircle:
     case AppModuleId.logbook:
       return ModulePlaceholderScreen(entry: entry);
@@ -54,7 +50,7 @@ class ModulePlaceholderScreen extends StatelessWidget {
             children: [
               PageHeader(title: entry.name, subtitle: entry.purpose),
               const StatusBanner(
-                message: 'Usa la pestaña correspondiente en la barra inferior.',
+                message: 'Usa la pestaña de la barra inferior.',
               ),
               const Spacer(),
               SecondaryButton(

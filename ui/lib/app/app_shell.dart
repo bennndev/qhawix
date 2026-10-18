@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/widgets/bottom_nav.dart';
 
-/// Persistent chrome: bottom navigation for the five DESIGN.md tabs.
+/// Persistent chrome: bottom navigation for the main tabs.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -12,7 +12,6 @@ class AppShell extends StatelessWidget {
   static const _tabs = <QhawixTab>[
     QhawixTab.inicio,
     QhawixTab.analizar,
-    QhawixTab.refugio,
     QhawixTab.red,
     QhawixTab.bitacora,
   ];

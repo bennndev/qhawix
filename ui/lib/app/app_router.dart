@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/logbook/view/logbook_screen.dart';
-import '../features/refuge/view/refuge_screen.dart';
 import '../features/trust_circle/view/trust_circle_screen.dart';
 import 'analyze_screen.dart';
 import 'app_shell.dart';
@@ -11,7 +10,7 @@ import 'module_catalog.dart';
 import 'module_host.dart';
 import 'module_onboarding_screen.dart';
 
-/// Root [GoRouter] for the QHAWIX shell (five tabs + module routes).
+/// Root [GoRouter] for the QHAWIX shell (four tabs + module routes).
 GoRouter createAppRouter({GlobalKey<NavigatorState>? navigatorKey}) {
   return GoRouter(
     navigatorKey: navigatorKey,
@@ -40,14 +39,6 @@ GoRouter createAppRouter({GlobalKey<NavigatorState>? navigatorKey}) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/refugio',
-                builder: (context, state) => const RefugeScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
                 path: '/red',
                 builder: (context, state) => const TrustCircleScreen(),
               ),
@@ -66,7 +57,8 @@ GoRouter createAppRouter({GlobalKey<NavigatorState>? navigatorKey}) {
       GoRoute(
         path: '/m/:slug/onboarding',
         builder: (context, state) {
-          final entry = ModuleCatalog.byPathSegment(state.pathParameters['slug']!);
+          final entry =
+              ModuleCatalog.byPathSegment(state.pathParameters['slug']!);
           if (entry == null) {
             return const _UnknownModuleScreen();
           }
@@ -76,7 +68,8 @@ GoRouter createAppRouter({GlobalKey<NavigatorState>? navigatorKey}) {
       GoRoute(
         path: '/m/:slug',
         builder: (context, state) {
-          final entry = ModuleCatalog.byPathSegment(state.pathParameters['slug']!);
+          final entry =
+              ModuleCatalog.byPathSegment(state.pathParameters['slug']!);
           if (entry == null) {
             return const _UnknownModuleScreen();
           }

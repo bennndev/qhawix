@@ -21,14 +21,14 @@ Widget _nav({
 );
 
 void main() {
-  testWidgets('shows the five tabs with visible labels', (tester) async {
+  testWidgets('shows the four tabs with visible labels', (tester) async {
     usePhoneSurface(tester);
     await tester.pumpWidget(_nav());
-    for (final label in ['Inicio', 'Analizar', 'Refugio', 'Red', 'Bitácora']) {
+    for (final label in ['Inicio', 'Analizar', 'Red', 'Bitácora']) {
       expect(find.text(label), findsOneWidget);
     }
     expect(find.byIcon(Icons.home), findsOneWidget);
-    expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.group_outlined), findsOneWidget);
   });
 
   testWidgets('selecting a tab reports it', (tester) async {
@@ -56,11 +56,11 @@ void main() {
   testWidgets('exposes selected state to accessibility', (tester) async {
     final handle = tester.ensureSemantics();
     usePhoneSurface(tester);
-    await tester.pumpWidget(_nav(selected: QhawixTab.refugio));
+    await tester.pumpWidget(_nav(selected: QhawixTab.red));
     expect(
-      tester.getSemantics(find.bySemanticsLabel('Refugio')),
+      tester.getSemantics(find.bySemanticsLabel('Red')),
       matchesSemantics(
-        label: 'Refugio',
+        label: 'Red',
         isButton: true,
         isSelected: true,
         hasSelectedState: true,
@@ -77,7 +77,7 @@ void main() {
       usePhoneSurface(tester);
       await tester.pumpWidget(_nav(textScale: scale));
       expect(tester.takeException(), isNull);
-      for (final label in ['Inicio', 'Analizar', 'Refugio', 'Red', 'Bitácora']) {
+      for (final label in ['Inicio', 'Analizar', 'Red', 'Bitácora']) {
         expect(find.text(label), findsOneWidget);
       }
     });
