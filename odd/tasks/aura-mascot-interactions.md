@@ -76,4 +76,4 @@ The approved logo asset path will be added here only after the user supplies the
 
 **AUR-01 verification:** `cd ui && flutter test --no-pub` — PASS, 434 tests; `cd ui && dart analyze` — PASS, no issues; `git diff --check` — PASS. The initial test runner stalled before a baseline RED could be observed, so no RED claim is made; the final widget tests and full suite passed against the restored committed lockfile.
 
-**AUR-01 commit:** pending.
+**AUR-01 commit:** `28d6968` — `feat(aura): add local safety guidance interactions`.
