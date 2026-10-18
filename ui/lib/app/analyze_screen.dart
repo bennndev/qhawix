@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/theme_extensions.dart';
+import '../core/widgets/guardian_mascot/guardian_mascot.dart';
 import '../core/widgets/module_card.dart';
 import '../core/widgets/page_header.dart';
 import '../core/widgets/qhawix_app_bar.dart';
@@ -16,7 +17,7 @@ class AnalyzeScreen extends StatelessWidget {
     final space = context.space;
     return Scaffold(
       appBar: QhawixAppBar(
-        title: 'Analizar',
+        title: 'QHAWIX',
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
@@ -26,10 +27,32 @@ class AnalyzeScreen extends StatelessWidget {
             child: ListView(
               padding: space.screenPadding,
               children: [
-                const PageHeader(
-                  title: 'Analizar',
-                  subtitle: 'Mensajes, QR y llamadas.',
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Expanded(
+                      child: PageHeader(
+                        title: 'Analizar',
+                        subtitle: 'Mensajes, QR y llamadas.',
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(space.xs),
+                      decoration: BoxDecoration(
+                        color: context.qColors.accent,
+                        borderRadius: BorderRadius.circular(space.sm),
+                      ),
+                      child: GuardianMascot(
+                        state: GuardianMascotState.stealth,
+                        size: space.iconXl,
+                        bodyColor: context.scheme.onPrimary,
+                        lineColor: context.scheme.onPrimary,
+                        semanticLabel: 'AURA, guía disponible',
+                      ),
+                    ),
+                  ],
                 ),
+                SizedBox(height: space.md),
                 for (final entry in ModuleCatalog.analyzeEntries) ...[
                   ModuleCard(
                     icon: entry.icon,

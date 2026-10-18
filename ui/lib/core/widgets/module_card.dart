@@ -35,9 +35,15 @@ class ModuleCard extends StatelessWidget {
       onTap: onTap,
       minHeight: space.moduleCardHeight,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: space.iconMd, color: colors.accent),
+          SizedBox(
+            width: space.iconXl,
+            height: space.iconXl,
+            child: Center(
+              child: Icon(icon, size: space.iconMd, color: colors.accent),
+            ),
+          ),
           SizedBox(width: space.md),
           Expanded(
             child: Column(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/theme_extensions.dart';
+import '../../../core/widgets/guardian_mascot/guardian_mascot.dart';
 import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/qhawix_buttons.dart';
 import '../../../core/widgets/section_card.dart';
@@ -31,6 +32,23 @@ class _SosScreenState extends State<SosScreen> {
   bool _sending = false;
   ActionResult? _result;
 
+  bool get _showMascot =>
+      _sending || _result?.outcome == ActionOutcome.rejected;
+
+  GuardianMascotState get _mascotState {
+    if (_sending) return GuardianMascotState.working;
+    if (_result?.outcome == ActionOutcome.rejected) {
+      return GuardianMascotState.alert;
+    }
+    return GuardianMascotState.idle;
+  }
+
+  String get _mascotLabel => switch (_mascotState) {
+    GuardianMascotState.working => 'Preparando el aviso SOS',
+    GuardianMascotState.alert => 'No se pudo preparar el aviso SOS',
+    _ => 'Guía de AURA',
+  };
+
   Future<void> _send(TrustCircleViewModel vm, Set<String> ids) async {
     setState(() => _sending = true);
     final result = await vm.sendSos(contactIds: ids, duration: _duration);
@@ -55,6 +73,17 @@ class _SosScreenState extends State<SosScreen> {
     return TrustCircleScaffold(
       title: 'SOS',
       children: [
+        if (_showMascot)
+          Align(
+            alignment: Alignment.centerRight,
+            child: GuardianMascot(
+              state: _mascotState,
+              size: space.iconXl,
+              bodyColor: context.qColors.accent,
+              lineColor: context.scheme.onPrimary,
+              semanticLabel: _mascotLabel,
+            ),
+          ),
         const PageHeader(
           title: 'Pedir ayuda a tu red',
           subtitle:
