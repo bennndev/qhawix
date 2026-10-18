@@ -9,6 +9,7 @@ import android.app.NotificationManager
 import android.app.role.RoleManager
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.ContactsContract
 import android.util.Base64
 import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
@@ -74,6 +75,7 @@ class MainActivity : FlutterActivity() {
                         saveTrustedPhoneHashes(phones)
                         result.success(null)
                     }
+                    "loadDeviceContacts" -> loadDeviceContacts(result)
                     "isCallScreeningEnabled" -> result.success(isCallScreeningEnabled())
                     "requestCallScreening" -> {
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -114,6 +116,52 @@ class MainActivity : FlutterActivity() {
         } else {
             speech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "echotrap-warning")
         }
+    }
+
+    private fun loadDeviceContacts(result: MethodChannel.Result) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            result.error("contacts_permission", "Primero permite el acceso a tus contactos.", null)
+            return
+        }
+
+        Thread {
+            try {
+                val contacts = mutableListOf<Map<String, String>>()
+                contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    ),
+                    null,
+                    null,
+                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC",
+                )?.use { cursor ->
+                    val nameColumn = cursor.getColumnIndexOrThrow(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    )
+                    val phoneColumn = cursor.getColumnIndexOrThrow(
+                        ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    )
+                    while (cursor.moveToNext()) {
+                        val name = cursor.getString(nameColumn)?.trim().orEmpty()
+                        val phone = cursor.getString(phoneColumn)?.trim().orEmpty()
+                        if (name.isNotEmpty() && phone.isNotEmpty()) {
+                            contacts.add(mapOf("name" to name, "phone" to phone))
+                        }
+                    }
+                }
+                runOnUiThread { result.success(contacts) }
+            } catch (_: SecurityException) {
+                runOnUiThread {
+                    result.error("contacts_permission", "Android no permitió leer tus contactos.", null)
+                }
+            } catch (_: Exception) {
+                runOnUiThread {
+                    result.error("contacts_unavailable", "No se pudo cargar la agenda del teléfono.", null)
+                }
+            }
+        }.start()
     }
 
     private fun showRiskAlert(level: String, text: String) {

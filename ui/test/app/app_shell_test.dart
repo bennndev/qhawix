@@ -6,6 +6,7 @@ import 'package:qhawix/app/qhawix_app.dart';
 Widget _shellUnderTest() => QhawixApp(
       router: createAppRouter(),
       forceDisableAnimations: true,
+      requireAuthentication: false,
     );
 
 Future<void> _settle(WidgetTester tester) async {

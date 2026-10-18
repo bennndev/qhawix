@@ -49,15 +49,12 @@ Como una suite de oficina, cada módulo funciona solo y se potencia con los dem�
 
 Basado en el estudio [`echotrap-next`](docs/echotrap-next%20%281%29.pdf): detector de voz clonada en tiempo real, más un honeypot que dilata al estafador y alerta a la familia.
 
-- **Detector de voz sintética** con semáforo (humana, dudosa, clonada). La persona pone la llamada en altavoz y QHAWIX escucha por el micrófono con un servicio en primer plano. Actividad de voz local (VAD) y ventanas de 3 a 5 s. `[Requisito]`
-- Motor de detección por API a través del gateway o modelo local (wav2vec2/ONNX) como modo privado. `[Spike]` (precisión por altavoz y línea telefónica sin medir)
-- **Honeypot real**: la persona reenvía la llamada sospechosa a un número de un agente de voz (telefonía + voz generada) que conversa, dilata y transcribe. `[Spike]` (reenvío condicional con operadores peruanos y proveedor de telefonía)
-- **Filtro de llamadas** para desconocidos: bloquear, rechazar o silenciar según señales y reputación. No accede al audio. `[Real]` (rol de filtrado de llamadas)
-- Alerta inmediata a la Red de Confianza al detectar voz clonada. `[Requisito]`
-- Palabra clave familiar y guía "cuelga y vuelve a llamar por otro canal". `[Real]`
-- Análisis de audio voluntario (nota de voz, archivo). `[Requisito]`
-- Reputación de números, antigüedad y reportes coincidentes con controles antiabuso. `[Futuro]`
-- Red propia de llamadas (WebRTC) con aviso previo y en vivo. `[Futuro]`
+- **Llamadas internas entre cuentas QHAWIX** por LiveKit: el usuario inicia o contesta desde la app; el teléfono receptor recibe el audio remoto y lo analiza durante la conversación. La sesión necesita que ambos tengan QHAWIX instalado, sesión iniciada y la app disponible. `[Real, prueba en dos teléfonos pendiente]`
+- **Transcripción y riesgo en vivo**: fragmentos cortos se envían con consentimiento a Deepgram; Gemini es el respaldo de transcripción y el clasificador de señales. El audio no se guarda en QHAWIX. El resultado es una alerta de riesgo, no una identificación del hablante ni prueba de delito. `[Real, calibración pendiente]`
+- **Búsqueda oficial**: cuando la conversación presenta señales de riesgo, se puede consultar Exa con el nombre de la entidad y mostrar fuentes oficiales permitidas. Una noticia sobre la institución no demuestra quién llama. `[Real, falta la clave de Exa en Supabase]`
+- **Estimación de voz sintética**: una muestra de 10 segundos puede revisarse con TruthScan, solo con consentimiento; el resultado es experimental. `[Real, falta la clave de TruthScan en Supabase]`
+- **Llamadas del operador, WhatsApp y otras apps**: QHAWIX no obtiene su audio ni puede silenciar su micrófono o hablar por la persona. No se debe presentar como protección de esas llamadas.
+- **Honeypot telefónico y agente que contesta**: no implementados. Requieren un número telefónico y conexión con un proveedor de telefonía.
 
 ### 4. Refugio: seguridad física y billeteras
 

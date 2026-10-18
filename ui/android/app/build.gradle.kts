@@ -29,6 +29,18 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appName"] = "QHAWIX"
+    }
+
+    // Side-by-side local build for testing the integrated call flow.
+    // The existing QHAWIX app and the earlier preview remain installable.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("localTest") {
+            dimension = "edition"
+            applicationIdSuffix = ".localtest"
+            manifestPlaceholders["appName"] = "QHAWIX Local"
+        }
     }
 
     buildTypes {

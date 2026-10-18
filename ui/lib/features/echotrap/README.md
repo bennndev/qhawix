@@ -1,43 +1,28 @@
 # EchoTrap
 
-EchoTrap is an isolated QHAWIX module. The application shell, other modules, and global startup are not part of this feature.
+EchoTrap es una pantalla de llamada dentro de QHAWIX. El inicio de sesión se pide al abrir la aplicación y la sesión se mantiene entre aperturas.
 
-## What it does
+## Cómo funciona
 
-- Opens Android's regular phone dialer for outgoing calls. The person confirms the call there.
-- Saves the owner's EchoTrap number in their authenticated profile and keeps manually added contacts in encrypted local storage.
-- Offers Android's call-screening role for incoming calls. Android only supplies visible numbers not already in the phone's address book; EchoTrap does not request access to that address book. It compares received numbers with EchoTrap contacts, warns about unmatched numbers, and allows every call without calling unknown numbers spam.
-- After the person returns to EchoTrap, activates speakerphone, gives microphone permission, and starts visible capture, it checks short microphone windows. A local voice-activity gate avoids sending silence. Deepgram transcribes the windows, local rules look for risky requests, and TruthScan checks the first ten seconds for synthetic-audio signs.
-- When the conversation mentions a supported bank, including Banco de la Nación, and the person separately consents to source lookup, it searches Exa results limited to official bank and Peruvian public-authority domains. The query contains only the bank name, never the audio or transcript. If `APIFY_API_TOKEN` is configured, Apify fetches up to three matching official pages to provide a fuller excerpt; Exa's excerpt is the fallback. The screen presents links, dates and excerpts as source material. These results do not verify the caller or prove wrongdoing.
-- Red and yellow findings create a high-priority notification with vibration when Android notifications are enabled. Warnings can also be spoken by the phone's text-to-speech. Android does not route that speech into the cellular call as a controllable agent voice.
+- Dos cuentas QHAWIX se llaman por el número guardado en sus perfiles. LiveKit transporta la voz en vivo. El receptor puede ver la llamada entrante mientras QHAWIX está abierta.
+- Al contestar o iniciar, ambas personas aceptan el aviso de análisis. La app del receptor toma la pista de voz remota en tramos de cuatro segundos y envía esos tramos a `transcribe` con sesión autenticada.
+- Deepgram es el transcriptor principal. Si no está configurado o no responde, `transcribe` usa Gemini de respaldo. Gemini y las reglas evalúan el texto para mostrar precaución o riesgo alto. El servicio no guarda audio ni texto de estas llamadas; conserva el estado de llamada y las alertas elevadas.
+- Después de reunir diez segundos, `voice-origin` puede enviar una sola muestra a TruthScan para estimar si detecta señales de audio sintético. Esa estimación no identifica a quien habla ni confirma una estafa.
+- Si la conversación presenta señales de riesgo, `call-intelligence` puede usar Exa para buscar fuentes oficiales a partir de la entidad mencionada. El buscador no recibe el audio, el número de teléfono ni la transcripción completa.
+- Los contactos se leen solo después de conceder el permiso Android. La agenda permanece en el teléfono; solo el número seleccionado se usa para encontrar una cuenta QHAWIX.
 
-## Platform boundary
+## Límites de Android
 
-Android third-party apps cannot take the audio path of another app's carrier call. `CallScreeningService` receives number and call metadata before the call rings, but not audio; it can allow, reject, or silence. Android does not deliver hidden/restricted numbers or numbers already in the phone's address book unless the app requests broader contact access; EchoTrap does not request that access. EchoTrap only allows calls. The microphone foreground service is separate and may receive silence while a cellular call is active, depending on Android version and device. The UI reports that condition instead of treating it as a safe result.
+EchoTrap analiza llamadas de QHAWIX mediante la pista de audio de LiveKit. No escucha ni bloquea llamadas normales del operador, WhatsApp u otras aplicaciones; Android no entrega a esta app el audio de esas llamadas. Tampoco hay un agente telefónico que responda por la persona. Estas funciones requerirían una línea y un proveedor de telefonía.
 
-Answering an unknown carrier call as a voice agent and recording its message is not available to this app. That requires a carrier forwarding arrangement and an inbound phone number connected to QHAWIX's call service. The existing LiveKit SIP address is a service endpoint, not a phone number; no carrier number or trunk is configured here. No fake agent, recording or answer state is shown. LiveKit's docs confirm that PSTN calls require a number and SIP provider, while its direct phone-number inventory is currently for US numbers: https://docs.livekit.io/telephony/start/sip-trunk-setup/ and https://docs.livekit.io/telephony/start/phone-numbers/.
+Una falta de transcripción, resultado de voz o fuente pública se muestra como no disponible. Un resultado verde o una búsqueda vacía no confirma que una llamada sea segura.
 
-## Configuration
+## Configuración del servidor
 
-The Flutter app needs only the Supabase project URL and its public publishable key at build time:
+El APK recibe únicamente la URL de Supabase y su clave pública al compilar. Las claves de LiveKit, Deepgram, Gemini, Exa y TruthScan permanecen en Supabase; nunca deben incluirse en Flutter ni en Git.
 
-```powershell
-flutter run --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_PUBLISHABLE_KEY
-```
+Funciones usadas por esta pantalla: `call-control`, `transcribe`, `call-intelligence` y `voice-origin`. Supabase tiene `transcribe` v5 activa; Deepgram es opcional y, si falta, la función usa Gemini. En llamadas QHAWIX el audio y el texto se procesan para el análisis, no se guardan en sus tablas; se conservan solo alertas elevadas. Las claves de Deepgram, Exa y TruthScan compartidas en el chat deben rotarse antes de habilitar esos proveedores.
 
-Set these provider secrets on the Supabase project (or in a local ignored env file):
+## Prueba local
 
-- `DEEPGRAM_API_KEY`
-- `TRUTHSCAN_API_KEY`
-- `EXA_API_KEY`
-- `APIFY_API_TOKEN` (optional; retrieves limited excerpts from up to three already-verified official results)
-
-The functions also need Supabase's `SUPABASE_URL` and `SUPABASE_ANON_KEY` runtime values to validate the signed-in user. Never put provider keys or a Supabase secret/service-role key in Flutter. The API keys pasted into the chat were exposed; generate replacements before configuring or deploying them.
-
-Only the person who signs in can call the functions. Audio is processed ephemerally by QHAWIX and is not written to its database or files; the chosen providers receive the permitted audio. Review their current retention terms before production use. Provider failure produces an unverifiable result.
-
-## Build and local backend
-
-Use the repository's Flutter checks from `ui/`. For local functions, copy `api/supabase/.env.echotrap.example` to `api/supabase/.env.echotrap.local`, put newly rotated keys there, start Supabase from `api/`, and serve functions with `npx supabase functions serve --env-file supabase/.env.echotrap.local`. Remote deployment requires selecting and linking the intended Supabase project first.
-
-For a phone UI preview without Supabase credentials, build a debug APK with `--dart-define=ECHOTRAP_PREVIEW=true`. The preview opens the dialer, contact list, and protection screen. Audio analysis remains disabled, and the preview flag does not bypass sign-in in release builds.
+Para probar en el Xiaomi, instala `ui/build/app/outputs/flutter-apk/app-localTest-release.apk` (copiado como `QHAWIX-Local-v5.apk` a Descargas). Crea una cuenta distinta en cada teléfono y guarda números únicos en formato internacional (`+51...`). Mantén QHAWIX abierta, inicia una llamada desde un teléfono y contesta en el otro. Usa frases inventadas; comprueba el audio, la transcripción y los cambios de riesgo. La detección de riesgo y la estimación de voz sintética aún requieren calibración con llamadas reales consentidas.

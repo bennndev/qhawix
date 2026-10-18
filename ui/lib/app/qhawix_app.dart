@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../core/theme/app_theme.dart';
 import '../features/trust_circle/trust_circle_providers.dart';
+import 'authentication_gate.dart';
 import 'app_router.dart';
 import 'module_activation_store.dart';
 
@@ -13,6 +14,7 @@ class QhawixApp extends StatefulWidget {
     super.key,
     this.router,
     this.forceDisableAnimations = false,
+    this.requireAuthentication = true,
   });
 
   /// Injected in tests; production builds its own [GoRouter].
@@ -20,6 +22,9 @@ class QhawixApp extends StatefulWidget {
 
   /// Widget tests set this so the mascot loop does not block pumps.
   final bool forceDisableAnimations;
+
+  /// Tests and explicitly labeled preview builds can bypass the login screen.
+  final bool requireAuthentication;
 
   @override
   State<QhawixApp> createState() => _QhawixAppState();
@@ -43,7 +48,10 @@ class _QhawixAppState extends State<QhawixApp> {
         themeMode: ThemeMode.system,
         routerConfig: _router,
         builder: (context, child) {
-          final content = child ?? const SizedBox.shrink();
+          Widget content = child ?? const SizedBox.shrink();
+          if (widget.requireAuthentication) {
+            content = AuthenticationGate(child: content);
+          }
           if (!widget.forceDisableAnimations) return content;
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(disableAnimations: true),

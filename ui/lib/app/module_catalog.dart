@@ -81,10 +81,15 @@ abstract final class ModuleCatalog {
     ModuleCatalogEntry(
       id: AppModuleId.echoTrap,
       name: 'EchoTrap',
-      purpose: 'Detecta voz clonada con el altavoz encendido.',
+      purpose: 'Llama, consulta tus contactos y revisa llamadas con EchoTrap.',
       icon: Icons.phone_in_talk_outlined,
       routePath: '/m/echotrap',
+      skipActivationGate: true,
       permissions: [
+        ModulePermissionNeed(
+          title: 'Contactos',
+          why: 'Solo para mostrar tu agenda y llamar a quien elijas.',
+        ),
         ModulePermissionNeed(
           title: 'Micrófono',
           why: 'Escucha por el altavoz mientras tú activas la detección.',
@@ -168,16 +173,16 @@ abstract final class ModuleCatalog {
 
   /// Modules on Inicio (not duplicated as bottom tabs).
   static List<ModuleCatalogEntry> get homeEntries => [
-        byId(AppModuleId.sentinel),
-        byId(AppModuleId.qrShield),
-        byId(AppModuleId.echoTrap),
-        byId(AppModuleId.aura),
-        byId(AppModuleId.privacy),
-      ];
+    byId(AppModuleId.sentinel),
+    byId(AppModuleId.qrShield),
+    byId(AppModuleId.echoTrap),
+    byId(AppModuleId.aura),
+    byId(AppModuleId.privacy),
+  ];
 
   static List<ModuleCatalogEntry> get analyzeEntries => [
-        byId(AppModuleId.sentinel),
-        byId(AppModuleId.qrShield),
-        byId(AppModuleId.echoTrap),
-      ];
+    byId(AppModuleId.sentinel),
+    byId(AppModuleId.qrShield),
+    byId(AppModuleId.echoTrap),
+  ];
 }

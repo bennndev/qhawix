@@ -1,1389 +1,1375 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../domain/echotrap_signal_analyzer.dart';
-
 const _phoneBridge = MethodChannel('pe.qhawix.qhawix/echotrap');
-const _audioBridge = EventChannel('pe.qhawix.qhawix/echotrap/audio');
-const _previewRequested = bool.fromEnvironment('ECHOTRAP_PREVIEW');
 
-/// EchoTrap stays inside its module. Supabase starts lazily here so the other
-/// QHAWIX modules and application startup do not depend on EchoTrap settings.
 class EchoTrapScreen extends StatefulWidget {
   const EchoTrapScreen({super.key});
-
   @override
   State<EchoTrapScreen> createState() => _EchoTrapScreenState();
 }
 
 class _EchoTrapScreenState extends State<EchoTrapScreen> {
-  bool get _isPreviewMode => kDebugMode && _previewRequested;
-
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _ownPhone = TextEditingController();
-  final _destination = TextEditingController();
-  final _contactName = TextEditingController();
-  final _contactPhone = TextEditingController();
-  final _contactsStorage = const FlutterSecureStorage();
-  final List<Map<String, String>> _contacts = [];
-  StreamSubscription<Object?>? _audioSubscription;
-  SupabaseClient? _client;
-  String _number = '';
-  String? _message;
-  String? _transcript;
-  String? _sourceResult;
-  List<Map<String, Object?>> _sources = [];
-  String _verdict = 'inconclusive';
-  double? _syntheticScore;
-  Uint8List _voiceBuffer = Uint8List(0);
-  bool _loading = true;
-  bool _working = false;
-  bool _registering = false;
-  bool _consent = false;
-  bool _sourceSearchConsent = false;
-  bool _monitoring = false;
-  bool _voiceSubmitted = false;
-  bool _screeningEnabled = false;
-  bool _officialSearchDone = false;
-  bool _warningSpoken = false;
+  final _myPhone = TextEditingController();
+  final _targetPhone = TextEditingController();
+  final _contactSearch = TextEditingController();
+  final _db = Supabase.instance.client;
+  RealtimeChannel? _incomingChannel;
+  RealtimeChannel? _callChannel;
+  Map<String, dynamic>? _incoming;
+  String? _callId;
+  String? _analysisCallId;
+  String _status = 'Listo para llamar';
+  String _tier = 'green';
+  String _transcript = '';
+  String? _voiceOriginStatus;
+  double? _voiceOriginScore;
+  String? _savedPhone;
+  String _intelligenceSummary = '';
+  List<Map<String, dynamic>> _intelligenceSources = const [];
+  bool _isCallee = false;
+  bool _busy = false;
+  bool _consentAnalysis = false;
+  bool _joiningRoom = false;
+  bool _intelligenceLoading = false;
+  bool _intelligenceRequested = false;
+  bool _muted = false;
   int _selectedTab = 0;
+  bool _loadingContacts = false;
+  bool _contactsPermissionGranted = false;
+  String? _contactsError;
+  String? _selectedContactName;
+  String? _selectedContactNumber;
+  List<Map<String, String>> _deviceContacts = const [];
+  Room? _room;
+  EventsListener<RoomEvent>? _roomListener;
+  Future<void> Function()? _removeAudioRenderer;
+  final List<int> _pendingPcm = [];
+  final List<int> _voiceSamplePcm = [];
+  String _transcriptContext = '';
+  int _sequence = 0;
+  bool _sendingChunk = false;
+  bool _voiceScanRequested = false;
 
   @override
   void initState() {
     super.initState();
-    _openEchoTrap();
-    _loadContacts();
+    _loadProfileAndListen();
   }
 
-  Future<void> _openEchoTrap() async {
-    const url = String.fromEnvironment('SUPABASE_URL');
-    const key = String.fromEnvironment(
-      'SUPABASE_PUBLISHABLE_KEY',
-      defaultValue: String.fromEnvironment('SUPABASE_ANON_KEY'),
-    );
-    if (url.isNotEmpty && key.isNotEmpty) {
-      try {
-        if (!_isSupabaseInitialized) {
-          await Supabase.initialize(url: url, publishableKey: key);
-        }
-        _client = Supabase.instance.client;
-        _ownPhone.text =
-            _client!.auth.currentUser?.userMetadata?['echotrap_phone']
-                as String? ??
-            '';
-      } catch (error) {
-        _message = 'No se pudo conectar con el acceso de EchoTrap: $error';
-      }
-    } else {
-      if (!_isPreviewMode) {
-        _message =
-            'Falta configurar el acceso de Supabase para EchoTrap en esta instalación.';
-      }
-    }
-    if (mounted) setState(() => _loading = false);
-  }
-
-  bool get _isSupabaseInitialized {
+  Future<void> _loadProfileAndListen() async {
+    final user = _db.auth.currentUser;
+    if (user == null) return;
     try {
-      Supabase.instance.client;
-      return true;
+      await _db.functions.invoke('call-control', body: {'action': 'expire'});
     } catch (_) {
-      return false;
+      // A missed-call cleanup failure must not hide current profile or calls.
     }
-  }
-
-  Future<void> _loadContacts() async {
-    try {
-      final raw = await _contactsStorage.read(key: 'echotrap_contacts_v1');
-      if (raw != null) {
-        final entries = (jsonDecode(raw) as List)
-            .whereType<Map>()
-            .map(
-              (item) => {
-                'name': '${item['name'] ?? ''}',
-                'phone': '${item['phone'] ?? ''}',
-              },
-            )
-            .toList();
-        if (mounted) {
-          setState(() {
-            _contacts
-              ..clear()
-              ..addAll(entries);
-          });
-        }
-        await _syncTrustedPhones();
-      }
-      final active = await _phoneBridge.invokeMethod<bool>(
-        'isCallScreeningEnabled',
-      );
-      if (mounted) setState(() => _screeningEnabled = active ?? false);
-    } catch (_) {
-      /* Contacts remain usable on devices without call screening. */
-    }
-  }
-
-  Future<void> _syncTrustedPhones() async {
-    try {
-      await _phoneBridge.invokeMethod<void>('setTrustedPhones', {
-        'phones': _contacts.map((item) => item['phone']).toList(),
-      });
-    } catch (_) {}
-  }
-
-  Future<void> _saveContacts() async {
-    await _contactsStorage.write(
-      key: 'echotrap_contacts_v1',
-      value: jsonEncode(_contacts),
-    );
-    await _syncTrustedPhones();
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _addContact() async {
-    _contactName.clear();
-    _contactPhone.clear();
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Añadir contacto'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _contactName,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Nombre'),
-            ),
-            TextField(
-              controller: _contactPhone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Teléfono con código de país',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-    if (saved != true) return;
-    final name = _contactName.text.trim();
-    final phone = _contactPhone.text.trim();
-    if (name.isEmpty || phone.length < 7) {
-      setState(() => _message = 'Revisa el nombre y el teléfono.');
-      return;
-    }
-    _contacts.add({'name': name, 'phone': phone});
-    await _saveContacts();
-  }
-
-  Future<void> _enableScreening() async {
-    await Permission.notification.request();
-    try {
-      await _phoneBridge.invokeMethod<void>('requestCallScreening');
-      final enabled = await _phoneBridge.invokeMethod<bool>(
-        'isCallScreeningEnabled',
-      );
+    final profile = await _db
+        .from('profiles')
+        .select('phone_e164')
+        .eq('id', user.id)
+        .maybeSingle();
+    if (profile?['phone_e164'] is String) {
+      final phone = profile!['phone_e164'] as String;
       if (mounted) {
         setState(() {
-          _screeningEnabled = enabled ?? false;
-          _message = _screeningEnabled
-              ? 'EchoTrap avisará antes de llamadas de números que no guardaste. Las dejará pasar; no puede escucharlas ni contestarlas.'
-              : 'No se activó la función de aviso de llamadas.';
+          _myPhone.text = phone;
+          _savedPhone = phone;
+        });
+      }
+    }
+    final channel = _db.channel('incoming-${user.id}');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'qhawix_calls',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'callee_id',
+        value: user.id,
+      ),
+      callback: (payload) {
+        final row = Map<String, dynamic>.from(payload.newRecord);
+        if (row['status'] == 'ringing' && mounted) {
+          setState(() => _incoming = row);
+        }
+      },
+    );
+    _incomingChannel = channel;
+    channel.subscribe();
+    // La suscripción recibe llamadas nuevas; esta consulta recupera las que ya
+    // estaban sonando cuando el usuario abrió Qhawix.
+    try {
+      final pending = await _db
+          .from('qhawix_calls')
+          .select('id, caller_id, callee_id, room_name, status, created_at')
+          .eq('callee_id', user.id)
+          .eq('status', 'ringing')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (pending != null && mounted && _incoming == null) {
+        setState(() => _incoming = Map<String, dynamic>.from(pending));
+      }
+    } catch (_) {
+      // La llamada seguirá apareciendo por Realtime si la conexión se recupera.
+    }
+  }
+
+  Future<void> _showContacts() async {
+    setState(() => _selectedTab = 1);
+    await _loadDeviceContacts(requestPermission: true);
+  }
+
+  Future<void> _loadDeviceContacts({bool requestPermission = false}) async {
+    if (_loadingContacts) return;
+    setState(() {
+      _loadingContacts = true;
+      _contactsError = null;
+    });
+    try {
+      var permission = await Permission.contacts.status;
+      if (requestPermission && !permission.isGranted) {
+        permission = await Permission.contacts.request();
+      }
+      if (!permission.isGranted) {
+        if (mounted) {
+          setState(() {
+            _contactsPermissionGranted = false;
+            _contactsError = permission.isPermanentlyDenied
+                ? 'El permiso está desactivado. Ábrelo en Ajustes para mostrar tu agenda.'
+                : 'Permite el acceso para ver tus contactos en EchoTrap.';
+          });
+        }
+        return;
+      }
+      final rows = await _phoneBridge.invokeListMethod<Object?>(
+        'loadDeviceContacts',
+      );
+      final contacts = (rows ?? const <Object?>[])
+          .whereType<Map>()
+          .map(
+            (row) => <String, String>{
+              'name': row['name']?.toString() ?? '',
+              'phone': row['phone']?.toString() ?? '',
+            },
+          )
+          .where((row) => row['name']!.isNotEmpty && row['phone']!.isNotEmpty)
+          .toList(growable: false);
+      if (mounted) {
+        setState(() {
+          _contactsPermissionGranted = true;
+          _deviceContacts = contacts;
         });
       }
     } on PlatformException catch (error) {
       if (mounted) {
-        setState(
-          () => _message =
-              error.message ??
-              'Esta versión de Android no ofrece el filtro de llamadas.',
-        );
+        setState(() {
+          _contactsError =
+              error.message ?? 'No se pudieron cargar tus contactos.';
+        });
       }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _contactsError = 'No se pudieron cargar tus contactos.');
+      }
+    } finally {
+      if (mounted) setState(() => _loadingContacts = false);
     }
   }
 
-  @override
-  void dispose() {
-    _audioSubscription?.cancel();
-    _phoneBridge.invokeMethod<void>('stopCapture');
-    _email.dispose();
-    _password.dispose();
-    _ownPhone.dispose();
-    _destination.dispose();
-    super.dispose();
+  Future<void> _requestContactsSettings() async {
+    await openAppSettings();
   }
 
-  Future<void> _authenticate() async {
-    final client = _client;
-    if (client == null) return;
+  void _selectContact(Map<String, String> contact) {
+    final name = contact['name'] ?? '';
+    final phone = contact['phone'] ?? '';
     setState(() {
-      _working = true;
-      _message = null;
+      _targetPhone.text = phone;
+      _selectedContactName = name;
+      _selectedContactNumber = phone;
+      _selectedTab = 0;
     });
-    try {
-      if (_registering) {
-        await client.auth.signUp(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
-        if (client.auth.currentUser == null) {
-          _message = 'Cuenta creada. Revisa tu correo y luego inicia sesión.';
-        }
-      } else {
-        await client.auth.signInWithPassword(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
-      }
-      _ownPhone.text =
-          client.auth.currentUser?.userMetadata?['echotrap_phone'] as String? ??
-          '';
-    } on AuthException catch (error) {
-      _message = error.message;
-    } catch (_) {
-      _message =
-          'No se pudo completar el acceso. Revisa tu conexión e inténtalo de nuevo.';
-    } finally {
-      if (mounted) setState(() => _working = false);
+    if (!RegExp(r'^\+[1-9][0-9]{7,14}$').hasMatch(phone)) {
+      _notice('Revisa el prefijo internacional del número antes de llamar.');
     }
   }
 
   Future<void> _savePhone() async {
-    final client = _client;
-    if (client == null || client.auth.currentUser == null) return;
-    final phone = _ownPhone.text.trim();
-    if (phone.length < 7) {
-      setState(() => _message = 'Escribe un número válido con código de país.');
+    final phone = _myPhone.text.trim();
+    if (!RegExp(r'^\+[1-9][0-9]{7,14}$').hasMatch(phone)) {
+      _notice(
+        'Escribe el número con código de país, por ejemplo +51987654321.',
+      );
+      return;
+    }
+    try {
+      await _db
+          .from('profiles')
+          .update({'phone_e164': phone})
+          .eq('id', _db.auth.currentUser!.id);
+      setState(() => _savedPhone = phone);
+      _notice('Tu número quedó guardado para recibir llamadas Qhawix.');
+    } catch (_) {
+      _notice('No se pudo guardar. Quizá ese número ya está registrado.');
+    }
+  }
+
+  Future<void> _startCall() async {
+    if (_savedPhone == null || _savedPhone != _myPhone.text.trim()) {
+      _notice('Guarda primero tu número para recibir llamadas.');
+      return;
+    }
+    if (!_consentAnalysis) {
+      _notice(
+        'Confirma primero que entiendes cómo se usa el audio para el análisis.',
+      );
+      return;
+    }
+    final phone = _targetPhone.text.trim();
+    if (!RegExp(r'^\+[1-9][0-9]{7,14}$').hasMatch(phone)) {
+      _notice('Escribe el número con + y código de país.');
       return;
     }
     setState(() {
-      _working = true;
-      _message = null;
+      _busy = true;
+      _status = 'Llamando…';
+      _tier = 'green';
+      _transcript = '';
+      _transcriptContext = '';
+      _isCallee = false;
+      _intelligenceSummary = '';
+      _intelligenceSources = const [];
+      _intelligenceRequested = false;
     });
     try {
-      final metadata = Map<String, dynamic>.from(
-        client.auth.currentUser!.userMetadata ?? {},
+      final result = await _db.functions.invoke(
+        'call-control',
+        body: {'action': 'start', 'phone': phone},
       );
-      metadata['echotrap_phone'] = phone;
-      await client.auth.updateUser(UserAttributes(data: metadata));
+      final data = Map<String, dynamic>.from(result.data as Map);
+      _setCallId(data['call_id'] as String);
       setState(
-        () => _message = 'Tu número quedó guardado en tu perfil de EchoTrap.',
+        () => _status = 'Llamando a ${data['callee_name'] ?? 'Qhawix'}…',
+      );
+    } on FunctionException catch (e) {
+      _notice(_friendlyError(e.details));
+      setState(() => _status = 'No se pudo iniciar');
+    } catch (_) {
+      _notice('No se pudo iniciar la llamada.');
+      setState(() => _status = 'No se pudo iniciar');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _setCallId(String id) {
+    _callId = id;
+    final channel = _db.channel('call-$id');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'qhawix_calls',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'id',
+        value: id,
+      ),
+      callback: (payload) {
+        final row = Map<String, dynamic>.from(payload.newRecord);
+        final status = row['status'];
+        if (status == 'active' && !_isCallee && _room == null) {
+          unawaited(_joinCall(id));
+        }
+        if ((status == 'ended' || status == 'rejected' || status == 'missed') &&
+            mounted) {
+          setState(() {
+            _status = status == 'rejected'
+                ? 'La llamada fue rechazada'
+                : 'La llamada terminó';
+            _callId = null;
+            _incoming = null;
+            _tier = 'green';
+          });
+          unawaited(_leaveRoom(notify: false));
+        }
+      },
+    );
+    _callChannel = channel;
+    channel.subscribe();
+    // Recupera el estado por si la otra persona contestó antes de que
+    // Realtime terminara de suscribirse en este teléfono.
+    unawaited(_syncCallState(id));
+  }
+
+  Future<void> _syncCallState(String id) async {
+    try {
+      final call = await _db
+          .from('qhawix_calls')
+          .select('status')
+          .eq('id', id)
+          .maybeSingle();
+      if (!mounted || _callId != id || call == null) return;
+      if (call['status'] == 'active' && !_isCallee && _room == null) {
+        unawaited(_joinCall(id));
+      }
+      if (call['status'] == 'rejected' ||
+          call['status'] == 'ended' ||
+          call['status'] == 'missed') {
+        setState(() {
+          _status = call['status'] == 'rejected'
+              ? 'La llamada fue rechazada'
+              : 'La llamada terminó';
+          _callId = null;
+          _incoming = null;
+          _tier = 'green';
+        });
+        unawaited(_leaveRoom(notify: false));
+      }
+    } catch (_) {
+      // Realtime mantiene el flujo si la consulta de recuperación falla.
+    }
+  }
+
+  Future<void> _answerIncoming() async {
+    if (!_consentAnalysis) {
+      _notice(
+        'Confirma primero que entiendes cómo se usa el audio para el análisis.',
+      );
+      return;
+    }
+    final incoming = _incoming;
+    if (incoming == null) return;
+    final id = incoming['id'] as String;
+    _isCallee = true;
+    _transcriptContext = '';
+    _intelligenceSummary = '';
+    _intelligenceSources = const [];
+    _intelligenceRequested = false;
+    setState(() {
+      _incoming = null;
+      _callId = id;
+      _status = 'Contestando…';
+    });
+    _setCallId(id);
+    try {
+      await _db.functions.invoke(
+        'call-control',
+        body: {'action': 'accept', 'call_id': id},
+      );
+      await _joinCall(id);
+    } catch (_) {
+      _notice('No se pudo contestar.');
+      setState(() {
+        _status = 'No se pudo contestar';
+        _callId = null;
+        _isCallee = false;
+      });
+    }
+  }
+
+  Future<void> _rejectIncoming() async {
+    final incoming = _incoming;
+    if (incoming == null) return;
+    setState(() => _incoming = null);
+    try {
+      await _db.functions.invoke(
+        'call-control',
+        body: {'action': 'reject', 'call_id': incoming['id']},
       );
     } catch (_) {
-      setState(
-        () => _message = 'No se pudo guardar el número. Vuelve a intentarlo.',
+      _notice('No se pudo rechazar la llamada.');
+    }
+  }
+
+  Future<void> _joinCall(String id) async {
+    if (_room != null || _joiningRoom) return;
+    _joiningRoom = true;
+    setState(() => _status = 'Conectando audio…');
+    try {
+      final response = await _db.functions.invoke(
+        'call-control',
+        body: {'action': 'token', 'call_id': id},
+      );
+      final data = Map<String, dynamic>.from(response.data as Map);
+      _analysisCallId = data['analysis_call_id'] as String;
+      final room = Room();
+      final listener = room.createListener();
+      listener.on<TrackSubscribedEvent>((event) {
+        if (_isCallee && event.track is RemoteAudioTrack) {
+          _listenToCaller(event.track as RemoteAudioTrack);
+        }
+      });
+      _room = room;
+      _roomListener = listener;
+      await room.connect(data['url'] as String, data['token'] as String);
+      await room.localParticipant?.setMicrophoneEnabled(true);
+      if (mounted) {
+        setState(
+          () => _status =
+              'Llamada conectada${_isCallee ? ' · Qhawix analiza la voz entrante' : ''}',
+        );
+      }
+    } on FunctionException catch (error) {
+      final message = _friendlyError(error.details);
+      await _leaveRoom(notify: true);
+      if (mounted) {
+        setState(() => _status = message);
+      }
+      _notice(message);
+    } catch (_) {
+      await _leaveRoom(notify: true);
+      if (mounted) {
+        setState(() => _status = 'No se pudo conectar el audio');
+      }
+      _notice(
+        'No se pudo conectar el audio de Qhawix. Revisa el servidor de voz y la conexión.',
       );
     } finally {
-      if (mounted) setState(() => _working = false);
+      _joiningRoom = false;
     }
   }
 
-  Future<void> _dial() async {
-    final number = _number.isNotEmpty ? _number : _destination.text.trim();
-    if (number.isEmpty) {
-      setState(() => _message = 'Ingresa el número al que quieres llamar.');
-      return;
-    }
-    try {
-      await _phoneBridge.invokeMethod<void>('dial', {'number': number});
-      setState(
-        () => _message =
-            'Se abrió la app Teléfono. Toca llamar allí. Al responder, vuelve a EchoTrap, activa el altavoz y empieza la protección.',
-      );
-    } on PlatformException catch (error) {
-      setState(
-        () => _message = error.message ?? 'No se pudo abrir la app Teléfono.',
-      );
-    }
-  }
-
-  void _appendDigit(String digit) {
-    setState(() {
-      if (_number.isEmpty && _destination.text.isNotEmpty) {
-        _number = _destination.text;
-        _destination.clear();
-      }
-      _number += digit;
-    });
-  }
-
-  void _deleteDigit() {
-    setState(() {
-      if (_number.isNotEmpty) {
-        _number = _number.substring(0, _number.length - 1);
-      } else if (_destination.text.isNotEmpty) {
-        _destination.text = _destination.text.substring(
-          0,
-          _destination.text.length - 1,
-        );
-      }
-    });
-  }
-
-  void _selectContact(String phone) {
-    setState(() {
-      _number = '';
-      _destination.text = phone;
-      _selectedTab = 0;
-    });
-  }
-
-  Future<void> _startMonitoring() async {
-    if (!_consent) {
-      setState(
-        () => _message =
-            'Confirma el permiso de análisis antes de activar el micrófono.',
-      );
-      return;
-    }
-    try {
-      final microphone = await Permission.microphone.request();
-      if (!microphone.isGranted) {
-        setState(
-          () => _message =
-              'Sin permiso de micrófono no se puede analizar la llamada.',
-        );
-        return;
-      }
-      await Permission.notification.request();
-      await _phoneBridge.invokeMethod<void>('startCapture');
-      _voiceBuffer = Uint8List(0);
-      _voiceSubmitted = false;
-      _transcript = null;
-      _syntheticScore = null;
-      _sourceResult = null;
-      _sources = [];
-      _verdict = 'inconclusive';
-      _officialSearchDone = false;
-      _warningSpoken = false;
-      _audioSubscription?.cancel();
-      _audioSubscription = _audioBridge.receiveBroadcastStream().listen(
-        (event) {
-          if (event is Uint8List) unawaited(_processAudio(event));
-        },
-        onError: (_) {
-          if (mounted) {
-            setState(
-              () => _message =
-                  'Android no está entregando audio. Activa el altavoz; algunas llamadas silencian el micrófono de otras apps.',
+  void _listenToCaller(RemoteAudioTrack track) {
+    if (_removeAudioRenderer != null) return;
+    _removeAudioRenderer = track.addAudioRenderer(
+      options: const AudioRendererOptions(
+        sampleRate: 24000,
+        channels: 1,
+        format: AudioFormat.Int16,
+      ),
+      onFrame: (frame) {
+        if (!_isCallee || frame.format != AudioFormat.Int16) return;
+        _pendingPcm.addAll(frame.data);
+        if (!_voiceScanRequested) {
+          _voiceSamplePcm.addAll(frame.data);
+          const voiceSampleBytes = 24000 * 2 * 10;
+          if (_voiceSamplePcm.length >= voiceSampleBytes) {
+            _voiceScanRequested = true;
+            final sample = Uint8List.fromList(
+              _voiceSamplePcm.sublist(0, voiceSampleBytes),
             );
-          }
-        },
-      );
-      setState(() {
-        _monitoring = true;
-        _message =
-            'Protección activa. Se analizarán fragmentos con voz y se enviarán a los proveedores solo mientras el permiso siga activo.';
-      });
-    } on PlatformException catch (error) {
-      setState(
-        () => _message = error.message ?? 'No se pudo activar el micrófono.',
-      );
-    }
-  }
-
-  Future<void> _processAudio(Uint8List pcm) async {
-    final client = _client;
-    if (!_monitoring || client == null) return;
-    if (!_hasSpeechEnergy(pcm)) {
-      if (mounted &&
-          _message !=
-              'No llega voz desde el micrófono. Activa el altavoz; Android podría estar reservando el audio para la llamada.') {
-        setState(
-          () => _message =
-              'No llega voz desde el micrófono. Activa el altavoz; Android podría estar reservando el audio para la llamada.',
-        );
-      }
-      return;
-    }
-    const maxVoiceBytes = 16000 * 2 * 10;
-    if (!_voiceSubmitted && _voiceBuffer.length < maxVoiceBytes) {
-      final remaining = maxVoiceBytes - _voiceBuffer.length;
-      _voiceBuffer = Uint8List.fromList([
-        ..._voiceBuffer,
-        ...pcm.take(remaining),
-      ]);
-    }
-    // Speech is sent only with the consent checkbox enabled; bytes are kept in
-    // memory for this call and never written to a file or database.
-    if (_consent) {
-      try {
-        final response = await client.functions.invoke(
-          'echotrap-transcribe',
-          body: {'pcm16Base64': _base64(pcm)},
-        );
-        final text = response.data is Map
-            ? response.data['transcript']?.toString()
-            : null;
-        if (text != null && text.trim().isNotEmpty && mounted) {
-          final merged = '${_transcript ?? ''} $text'.trim();
-          final decision = assessEchoTrapText(merged);
-          final previousVerdict = _verdict;
-          final nextVerdict = switch (decision.risk) {
-            EchoTrapTextRisk.highRisk => 'red',
-            EchoTrapTextRisk.caution => 'yellow',
-            // No detected phrase is not evidence that the call is safe.
-            EchoTrapTextRisk.noSignal => _verdict,
-          };
-          setState(() {
-            _transcript = merged;
-            _verdict = nextVerdict;
-            _message = decision.message;
-          });
-          if (nextVerdict != previousVerdict &&
-              (nextVerdict == 'red' || nextVerdict == 'yellow')) {
-            unawaited(_showRiskAlert(nextVerdict, decision.message));
-          }
-          if (decision.risk == EchoTrapTextRisk.highRisk) {
-            if (!_warningSpoken) {
-              _warningSpoken = true;
-              await _speakLocal(
-                'Alerta de posible estafa. No compartas claves ni códigos. Cuelga y llama al banco desde su aplicación oficial.',
-              );
-            }
-          }
-          if (_sourceSearchConsent &&
-              !_officialSearchDone &&
-              _containsOrganization(merged)) {
-            _officialSearchDone = true;
-            unawaited(_searchOfficialSource(merged));
+            unawaited(_checkVoiceOrigin(sample));
           }
         }
-      } catch (_) {
-        if (mounted) {
+        const chunkBytes = 24000 * 2 * 4;
+        if (_pendingPcm.length >= chunkBytes && !_sendingChunk) {
+          final pcm = Uint8List.fromList(_pendingPcm.sublist(0, chunkBytes));
+          _pendingPcm.removeRange(0, chunkBytes);
+          unawaited(_transcribeChunk(pcm));
+        }
+      },
+    );
+  }
+
+  Future<void> _checkVoiceOrigin(Uint8List pcm) async {
+    final callId = _callId;
+    if (callId == null) return;
+    if (mounted) {
+      setState(() => _voiceOriginStatus = 'Revisando una muestra de audio…');
+    }
+    try {
+      final result = await _db.functions.invoke(
+        'voice-origin',
+        body: {'call_id': callId, 'audio': base64Encode(_wrapWav(pcm, 24000))},
+      );
+      final data = Map<String, dynamic>.from(result.data as Map);
+      if (!mounted) return;
+      setState(() {
+        _voiceOriginScore = data['score'] is num
+            ? (data['score'] as num).toDouble()
+            : null;
+        _voiceOriginStatus =
+            data['available'] == true && data['status'] == 'done'
+            ? (_voiceOriginScore == null
+                  ? 'No se obtuvo un resultado concluyente.'
+                  : 'Señal estimada de audio sintético: ${(_voiceOriginScore! * 100).round()}%')
+            : 'La revisión de origen de voz no está disponible.';
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _voiceOriginStatus =
+              'La revisión de origen de voz no está disponible.',
+        );
+      }
+    }
+  }
+
+  Future<void> _transcribeChunk(Uint8List pcm) async {
+    if (_sendingChunk || _analysisCallId == null || !_isCallee) return;
+    _sendingChunk = true;
+    try {
+      _sequence++;
+      final wav = _wrapWav(pcm, 24000);
+      final result = await _db.functions.invoke(
+        'transcribe',
+        body: {
+          'call_id': _analysisCallId,
+          'seq': _sequence,
+          'mime': 'audio/wav',
+          'audio': base64Encode(wav),
+          'context': _transcriptContext,
+        },
+      );
+      final data = Map<String, dynamic>.from(result.data as Map);
+      final text = (data['text'] as String?)?.trim() ?? '';
+      final verdict = data['verdict'];
+      if (text.isEmpty) {
+        final degraded = data['degraded'];
+        if (mounted && degraded is List && degraded.contains('stt')) {
           setState(
-            () => _message =
-                'No se pudo analizar este fragmento. Resultado no verificable; mantén precaución.',
+            () => _status =
+                'Llamada conectada · no se pudo transcribir este tramo',
+          );
+        }
+        return;
+      }
+      _transcriptContext = '$_transcriptContext\nLLAMANTE: $text'.trim();
+      if (_transcriptContext.length > 6000) {
+        _transcriptContext = _transcriptContext.substring(
+          _transcriptContext.length - 6000,
+        );
+      }
+      if (mounted && text.isNotEmpty) {
+        setState(() {
+          _transcript = text;
+          _status = data['transcription_provider'] == 'gemini'
+              ? 'Llamada conectada · transcripción de respaldo activa'
+              : 'Llamada conectada · análisis en vivo';
+          if (verdict is Map && verdict['tier'] is String) {
+            _tier = verdict['tier'] as String;
+          }
+        });
+        final tier = verdict is Map ? verdict['tier'] : null;
+        final callId = _callId;
+        if ((tier == 'amber' || tier == 'red') &&
+            callId != null &&
+            !_intelligenceRequested) {
+          _intelligenceRequested = true;
+          unawaited(
+            _loadCallIntelligence(
+              callId,
+              _transcriptContext.length > 1200
+                  ? _transcriptContext.substring(
+                      _transcriptContext.length - 1200,
+                    )
+                  : _transcriptContext,
+            ),
           );
         }
       }
-      if (!_voiceSubmitted && _voiceBuffer.length >= maxVoiceBytes) {
-        _voiceSubmitted = true;
-        unawaited(
-          _checkSyntheticVoice(_voiceBuffer.sublist(0, 16000 * 2 * 10)),
-        );
-      }
-    }
-  }
-
-  bool _hasSpeechEnergy(Uint8List pcm16) {
-    if (pcm16.length < 2) return false;
-    var absoluteTotal = 0;
-    var count = 0;
-    for (var index = 0; index + 1 < pcm16.length; index += 2) {
-      final sample = (pcm16[index + 1] << 8) | pcm16[index];
-      final signed = sample >= 0x8000 ? sample - 0x10000 : sample;
-      absoluteTotal += signed.abs();
-      count++;
-    }
-    return count > 0 && absoluteTotal ~/ count >= 180;
-  }
-
-  String _base64(Uint8List bytes) => base64Encode(bytes);
-
-  Future<void> _checkSyntheticVoice(Uint8List pcm) async {
-    try {
-      final result = await _client!.functions.invoke(
-        'echotrap-voice-check',
-        body: {'pcm16Base64': _base64(pcm), 'sampleRate': 16000},
-      );
-      final data = result.data as Map;
-      final score = (data['score'] as num?)?.toDouble();
-      if (!mounted) return;
-      if (score == null) {
-        setState(
-          () => _message =
-              'TruthScan aún no devolvió un resultado. La voz queda sin verificar.',
-        );
-        return;
-      }
-      final shouldNotify =
-          score >= .75 && _verdict != 'red' && _verdict != 'yellow';
-      setState(() {
-        _syntheticScore = score;
-        if (shouldNotify) {
-          _verdict = 'yellow';
-          _message =
-              'Precaución: el proveedor encontró señales compatibles con audio sintético. No identifica al hablante ni confirma un fraude.';
-        }
-      });
-      if (shouldNotify) {
-        unawaited(_showRiskAlert('yellow', _message!));
-      }
     } catch (_) {
       if (mounted) {
         setState(
-          () => _message =
-              'La revisión de voz artificial no respondió; el resultado queda sin verificar.',
+          () => _status =
+              'Llamada conectada · análisis temporalmente no disponible',
         );
       }
+    } finally {
+      _sendingChunk = false;
     }
   }
 
-  bool _containsOrganization(String text) => _institution(text) != null;
-
-  Future<void> _searchOfficialSource(String transcript) async {
-    final institution = _institution(transcript);
-    if (institution == null) return;
+  Future<void> _loadCallIntelligence(String callId, String transcript) async {
+    setState(() => _intelligenceLoading = true);
     try {
-      final result = await _client!.functions.invoke(
-        'echotrap-official-search',
-        body: {'institution': institution},
+      final response = await _db.functions.invoke(
+        'call-intelligence',
+        body: {'qhawix_call_id': callId, 'transcript': transcript},
       );
-      final data = result.data as Map;
-      final sources = (data['sources'] as List? ?? []).cast<Map>();
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final sources = (data['sources'] as List? ?? const [])
+          .whereType<Map>()
+          .map((source) => Map<String, dynamic>.from(source))
+          .toList(growable: false);
+      if (!mounted) return;
+      setState(() {
+        _intelligenceSummary = data['summary'] as String? ?? '';
+        _intelligenceSources = sources;
+      });
+    } catch (_) {
       if (mounted) {
         setState(() {
-          _sources = sources
-              .take(3)
-              .map((item) => Map<String, Object?>.from(item))
-              .toList();
-          _sourceResult = _sources.isEmpty
-              ? 'No se encontraron avisos oficiales; eso no confirma que la llamada sea legítima.'
-              : null;
+          _intelligenceSummary =
+              'La consulta web no respondió. Verifica siempre por el canal oficial de la entidad.';
         });
       }
+    } finally {
+      if (mounted) setState(() => _intelligenceLoading = false);
+    }
+  }
+
+  void _appendDialDigit(String digit) {
+    if (_targetPhone.text.length >= 16) return;
+    setState(() {
+      _targetPhone.text += digit;
+      _selectedContactName = null;
+      _selectedContactNumber = null;
+    });
+  }
+
+  void _removeDialDigit() {
+    final value = _targetPhone.text;
+    if (value.isEmpty) return;
+    setState(() {
+      _targetPhone.text = value.substring(0, value.length - 1);
+      _selectedContactName = null;
+      _selectedContactNumber = null;
+    });
+  }
+
+  Future<void> _toggleMute() async {
+    final enabled = !_muted;
+    try {
+      await _room?.localParticipant?.setMicrophoneEnabled(!enabled);
+      if (mounted) setState(() => _muted = enabled);
     } catch (_) {
-      if (mounted) {
-        setState(
-          () => _sourceResult =
-              'No se pudo consultar las fuentes. La identidad de quien llama sigue sin verificarse.',
-        );
+      _notice('No se pudo cambiar el micrófono.');
+    }
+  }
+
+  Uint8List _wrapWav(Uint8List pcm, int rate) {
+    final bytes = ByteData(44 + pcm.length);
+    void tag(String text, int offset) {
+      for (var i = 0; i < text.length; i++) {
+        bytes.setUint8(offset + i, text.codeUnitAt(i));
       }
     }
+
+    tag('RIFF', 0);
+    bytes.setUint32(4, 36 + pcm.length, Endian.little);
+    tag('WAVE', 8);
+    tag('fmt ', 12);
+    bytes.setUint32(16, 16, Endian.little);
+    bytes.setUint16(20, 1, Endian.little);
+    bytes.setUint16(22, 1, Endian.little);
+    bytes.setUint32(24, rate, Endian.little);
+    bytes.setUint32(28, rate * 2, Endian.little);
+    bytes.setUint16(32, 2, Endian.little);
+    bytes.setUint16(34, 16, Endian.little);
+    tag('data', 36);
+    bytes.setUint32(40, pcm.length, Endian.little);
+    bytes.buffer.asUint8List().setRange(44, 44 + pcm.length, pcm);
+    return bytes.buffer.asUint8List();
   }
 
-  String? _institution(String text) {
-    final normalized = text
-        .toLowerCase()
-        .replaceAll('á', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ú', 'u');
-    if (RegExp(
-      r'\b(b\s*c\s*p|banco de credito(?: del peru)?)\b',
-    ).hasMatch(normalized)) {
-      return 'BCP';
+  Future<void> _leaveRoom({bool notify = true}) async {
+    final id = _callId;
+    final room = _room;
+    _room = null;
+    await _removeAudioRenderer?.call();
+    _removeAudioRenderer = null;
+    await _roomListener?.dispose();
+    _roomListener = null;
+    await room?.disconnect();
+    _pendingPcm.clear();
+    _voiceSamplePcm.clear();
+    _transcriptContext = '';
+    _voiceScanRequested = false;
+    _voiceOriginScore = null;
+    _voiceOriginStatus = null;
+    _analysisCallId = null;
+    _muted = false;
+    if (notify && id != null) {
+      try {
+        await _db.functions.invoke(
+          'call-control',
+          body: {'action': 'end', 'call_id': id},
+        );
+      } catch (_) {
+        _notice('Se cerró el audio; no se pudo actualizar el estado remoto.');
+      }
     }
-    if (RegExp(r'\b(interbank)\b').hasMatch(normalized)) {
-      return 'Interbank';
-    }
-    if (RegExp(r'\b(bbva)\b').hasMatch(normalized)) {
-      return 'BBVA';
-    }
-    if (RegExp(r'\b(scotiabank)\b').hasMatch(normalized)) {
-      return 'Scotiabank';
-    }
-    if (RegExp(r'\b(banco de la nacion|banco nacion)\b').hasMatch(normalized)) {
-      return 'Banco de la Nación';
-    }
-    return null;
-  }
-
-  Future<void> _speakLocal(String text) async {
-    try {
-      await _phoneBridge.invokeMethod<void>('speakWarning', {'text': text});
-    } catch (_) {
-      /* visual alert remains available */
-    }
-  }
-
-  Future<void> _showRiskAlert(String level, String text) async {
-    try {
-      await _phoneBridge.invokeMethod<void>('showRiskAlert', {
-        'level': level,
-        'text': text,
-      });
-    } catch (_) {
-      // The warning remains visible in the EchoTrap screen.
-    }
-  }
-
-  Future<void> _stopMonitoring() async {
-    await _audioSubscription?.cancel();
-    _audioSubscription = null;
-    try {
-      await _phoneBridge.invokeMethod<void>('stopCapture');
-    } catch (_) {}
-    if (mounted) {
+    if (mounted && notify) {
       setState(() {
-        _monitoring = false;
-        _voiceBuffer = Uint8List(0);
-        _voiceSubmitted = false;
+        _status = 'Llamada terminada';
+        _callId = null;
+        _tier = 'green';
       });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  void _notice(String text) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     }
-    final user = _client?.auth.currentUser;
-    if (user == null && !_isPreviewMode) return _buildAccessScreen();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(
-              Icons.shield_moon_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 10),
-            Text(['Llamar', 'Contactos', 'Protección'][_selectedTab]),
-          ],
-        ),
-        actions: [
-          if (_isPreviewMode)
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Center(child: Chip(label: Text('Vista previa'))),
-            ),
-          if (user != null)
-            IconButton(
-              tooltip: 'Cerrar sesión',
-              onPressed: () async {
-                await _stopMonitoring();
-                await _client?.auth.signOut();
-                setState(() {});
-              },
-              icon: const Icon(Icons.logout),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_message != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: _Notice(
-                text: _message!,
-                color: _verdict == 'red'
-                    ? Theme.of(context).colorScheme.errorContainer
-                    : null,
-              ),
-            ),
-          Expanded(
-            child: IndexedStack(
-              index: _selectedTab,
-              children: [
-                _buildDialerPage(),
-                _buildContactsPage(),
-                _buildProtectionPage(),
-              ],
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: _selectedTab == 1
-          ? FloatingActionButton.extended(
-              onPressed: _addContact,
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Añadir contacto'),
-            )
-          : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedTab,
-        onDestinationSelected: (index) => setState(() => _selectedTab = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dialpad_outlined),
-            selectedIcon: Icon(Icons.dialpad),
-            label: 'Llamar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Contactos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shield_outlined),
-            selectedIcon: Icon(Icons.shield),
-            label: 'Protección',
-          ),
-        ],
-      ),
-    );
   }
 
-  Widget _buildAccessScreen() {
-    final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('EchoTrap'), centerTitle: false),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: colors.secondaryContainer,
-                    foregroundColor: colors.onSecondaryContainer,
-                    child: const Icon(Icons.shield_moon_outlined, size: 34),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Tus llamadas, con más cuidado',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Entra a EchoTrap para guardar tus contactos y configurar los avisos de llamadas.',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  if (_message != null) ...[
-                    const SizedBox(height: 20),
-                    _Notice(text: _message!),
-                  ],
-                  if (_client == null) ...[
-                    const SizedBox(height: 20),
-                    const _Notice(
-                      text:
-                          'Esta instalación necesita la configuración pública de Qhawix para iniciar sesión. Las claves de proveedores se guardan en el servidor.',
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      decoration: const InputDecoration(
-                        labelText: 'Correo electrónico',
-                        prefixIcon: Icon(Icons.mail_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _password,
-                      obscureText: true,
-                      autofillHints: const [AutofillHints.password],
-                      decoration: const InputDecoration(
-                        labelText: 'Contraseña',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: _working ? null : _authenticate,
-                      child: Text(
-                        _working
-                            ? 'Un momento…'
-                            : _registering
-                            ? 'Crear cuenta'
-                            : 'Iniciar sesión',
-                      ),
-                    ),
-                    Center(
-                      child: TextButton(
-                        onPressed: () => setState(() {
-                          _registering = !_registering;
-                          _message = null;
-                        }),
-                        child: Text(
-                          _registering
-                              ? 'Ya tengo cuenta'
-                              : 'Crear una cuenta nueva',
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  String _friendlyError(dynamic error) {
+    if (error is Map) {
+      switch (error['error']) {
+        case 'user_not_found':
+          return 'Ese número todavía no tiene una cuenta Qhawix.';
+        case 'voice_service_not_configured':
+          return 'El servidor de voz de Qhawix todavía no está configurado.';
+        case 'cannot_call_self':
+          return 'No puedes llamarte a ti mismo.';
+      }
+    }
+    return 'No se pudo completar la solicitud.';
   }
 
-  Widget _buildDialerPage() {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final enteredNumber = _number.isNotEmpty
-        ? _number
-        : _destination.text.trim();
-    final riskDetected = _verdict == 'red' || _verdict == 'yellow';
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      children: [
-        Material(
-          color: colors.secondaryContainer,
-          borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => setState(() => _selectedTab = 2),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Icon(
-                    _monitoring ? Icons.graphic_eq : Icons.shield_outlined,
-                    color: colors.onSecondaryContainer,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _monitoring
-                              ? 'Protección activa'
-                              : _screeningEnabled
-                              ? 'Avisos de llamadas activados'
-                              : 'Configura tu protección',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: colors.onSecondaryContainer,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _monitoring
-                              ? 'Revisando el sonido que entra por el altavoz'
-                              : 'Toca para revisar tus opciones de seguridad',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onSecondaryContainer,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: colors.onSecondaryContainer),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (riskDetected || _monitoring) ...[
-          const SizedBox(height: 12),
-          _RiskSummary(verdict: _verdict, monitoring: _monitoring),
-        ],
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            const Spacer(),
-            Expanded(
-              flex: 5,
-              child: Text(
-                enteredNumber.isEmpty ? 'Ingresa un número' : enteredNumber,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            Expanded(
-              child: IconButton(
-                tooltip: 'Borrar último dígito',
-                onPressed: enteredNumber.isEmpty ? null : _deleteDigit,
-                icon: const Icon(Icons.backspace_outlined),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _Keypad(onDigit: _appendDigit),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 56,
-          child: FilledButton.icon(
-            onPressed: enteredNumber.isEmpty ? null : _dial,
-            icon: const Icon(Icons.call),
-            label: const Text('Llamar'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF257A53),
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'La app Teléfono confirma la llamada. Cuando contesten, vuelve aquí y activa la protección con el altavoz.',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
+  Color get _riskColor => switch (_tier) {
+    'red' => Colors.red,
+    'amber' => Colors.orange,
+    _ => Colors.green,
+  };
 
-  Widget _buildContactsPage() {
-    final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-      children: [
-        Text('Contactos guardados', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 6),
-        Text(
-          'Añade aquí los números que quieres reconocer. EchoTrap no lee la agenda del teléfono.',
-          style: theme.textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 16),
-        if (_contacts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 72),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.person_add_alt_1,
-                  size: 38,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Todavía no guardaste contactos',
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 6),
-                const Text('Usa “Añadir contacto” para empezar.'),
-              ],
-            ),
-          )
-        else
-          ..._contacts.map(
-            (contact) => Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                    child: const Icon(Icons.person_outline),
-                  ),
-                  title: Text(contact['name'] ?? ''),
-                  subtitle: Text(contact['phone'] ?? ''),
-                  onTap: () => _selectContact(contact['phone'] ?? ''),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Usar este número',
-                        onPressed: () => _selectContact(contact['phone'] ?? ''),
-                        icon: const Icon(Icons.call_outlined),
-                      ),
-                      IconButton(
-                        tooltip: 'Quitar contacto',
-                        onPressed: () async {
-                          _contacts.remove(contact);
-                          await _saveContacts();
-                        },
-                        icon: const Icon(Icons.delete_outline),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildProtectionPage() {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      children: [
-        Text('Protección de llamadas', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 6),
-        Text(
-          'Activa solo las funciones que quieras usar. Puedes cambiar los permisos cuando lo necesites.',
-          style: theme.textTheme.bodyMedium,
-        ),
-        if (_isPreviewMode) ...[
-          const SizedBox(height: 16),
-          const _Notice(
-            text:
-                'Vista previa local: puedes revisar el marcador y los contactos. El análisis de llamadas requiere la conexión real de tu cuenta.',
-          ),
-        ],
-        const SizedBox(height: 24),
-        Text(
-          'Avisos de llamadas entrantes',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Android puede avisar sobre números visibles que no están guardados en tu agenda. La llamada seguirá sonando y EchoTrap no la marcará automáticamente como fraude.',
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: _screeningEnabled ? null : _enableScreening,
-          icon: Icon(
-            _screeningEnabled ? Icons.verified_user : Icons.shield_outlined,
-          ),
-          label: Text(
-            _screeningEnabled
-                ? 'Avisos activados'
-                : 'Activar avisos en Android',
-          ),
-        ),
-        if (!_isPreviewMode) ...[
-          const Divider(height: 32),
-          Text('Tu número', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _ownPhone,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'Número de teléfono',
-              helperText: 'Se guarda en el perfil de tu cuenta.',
-              prefixIcon: Icon(Icons.phone_outlined),
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _working ? null : _savePhone,
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('Guardar número'),
-            ),
-          ),
-        ],
-        const Divider(height: 32),
-        Text('Análisis durante la llamada', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 4),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          value: _consent,
-          onChanged: _isPreviewMode
-              ? null
-              : (value) => setState(() => _consent = value ?? false),
-          title: const Text('Permitir análisis temporal de audio'),
-          subtitle: const Text(
-            'Envía fragmentos breves a Deepgram y TruthScan para transcripción y señales de voz artificial. Qhawix no los guarda. Puedes usar los avisos de números sin activar esto.',
-          ),
-          controlAffinity: ListTileControlAffinity.leading,
-        ),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          value: _sourceSearchConsent,
-          onChanged: _isPreviewMode
-              ? null
-              : (value) =>
-                    setState(() => _sourceSearchConsent = value ?? false),
-          title: const Text('Permitir búsqueda de fuentes oficiales'),
-          subtitle: const Text(
-            'Si la transcripción menciona un banco, se buscarán avisos públicos relacionados. Solo se envía el nombre de la entidad, no el audio ni la transcripción.',
-          ),
-          controlAffinity: ListTileControlAffinity.leading,
-        ),
-        const SizedBox(height: 8),
-        FilledButton.icon(
-          onPressed: _isPreviewMode
-              ? null
-              : _monitoring
-              ? _stopMonitoring
-              : _startMonitoring,
-          icon: Icon(_monitoring ? Icons.stop : Icons.graphic_eq),
-          label: Text(
-            _isPreviewMode
-                ? 'Análisis no conectado en vista previa'
-                : _monitoring
-                ? 'Detener análisis'
-                : 'Proteger llamada actual',
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: _monitoring ? colors.error : null,
-            foregroundColor: _monitoring ? colors.onError : null,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Inicia la llamada en Teléfono, activa el altavoz y vuelve aquí. EchoTrap solo analiza el sonido que el micrófono alcanza a captar.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 20),
-        _RiskCard(
-          verdict: _verdict,
-          score: _syntheticScore,
-          transcript: _transcript,
-          sources: _sourceResult,
-          officialSources: _sources,
-          onRepeatWarning: () => _speakLocal(
-            'No compartas claves ni códigos. Cuelga y contacta a la entidad desde su aplicación oficial.',
-          ),
-        ),
-        const SizedBox(height: 16),
-        _Notice(
-          text:
-              'Límite actual: Android no permite que EchoTrap tome el audio de la llamada celular, silencie tu micrófono ni hable por ti. Tampoco contesta o graba en tu lugar. Las alertas de voz se oyen en este teléfono.',
-          color: colors.surfaceContainerHighest,
-        ),
-      ],
-    );
-  }
-}
-
-class _Keypad extends StatelessWidget {
-  const _Keypad({required this.onDigit});
-  final ValueChanged<String> onDigit;
   @override
-  Widget build(BuildContext context) => GridView.count(
-    crossAxisCount: 3,
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    childAspectRatio: 1.5,
-    children: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((
-      key,
-    ) {
-      final caption = switch (key) {
-        '2' => 'ABC',
-        '3' => 'DEF',
-        '4' => 'GHI',
-        '5' => 'JKL',
-        '6' => 'MNO',
-        '7' => 'PQRS',
-        '8' => 'TUV',
-        '9' => 'WXYZ',
-        _ => '',
-      };
-      return Padding(
-        padding: const EdgeInsets.all(3),
-        child: Material(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          shape: const CircleBorder(),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () => onDigit(key),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(key, style: Theme.of(context).textTheme.titleLarge),
-                if (caption.isNotEmpty)
-                  Text(
-                    caption,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(letterSpacing: 1.1),
-                  ),
-              ],
-            ),
-          ),
+  void dispose() {
+    _myPhone.dispose();
+    _targetPhone.dispose();
+    _contactSearch.dispose();
+    if (_incomingChannel != null) {
+      unawaited(_db.removeChannel(_incomingChannel!));
+    }
+    if (_callChannel != null) {
+      unawaited(_db.removeChannel(_callChannel!));
+    }
+    unawaited(_leaveRoom(notify: false));
+    super.dispose();
+  }
+
+  Widget _dialKey(String digit, {String letters = ''}) => Material(
+    color: Theme.of(context).colorScheme.surfaceContainerLow,
+    shape: const CircleBorder(),
+    child: InkWell(
+      customBorder: const CircleBorder(),
+      onTap: () => _appendDialDigit(digit),
+      child: SizedBox(
+        height: 62,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(digit, style: Theme.of(context).textTheme.headlineSmall),
+            if (letters.isNotEmpty)
+              Text(
+                letters,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(letterSpacing: 1.4),
+              ),
+          ],
         ),
-      );
-    }).toList(),
+      ),
+    ),
   );
-}
 
-class _RiskSummary extends StatelessWidget {
-  const _RiskSummary({required this.verdict, required this.monitoring});
-  final String verdict;
-  final bool monitoring;
+  Future<void> _openOfficialSource(String rawUrl) async {
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null || uri.scheme != 'https') return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      _notice('No se pudo abrir la fuente. Copia el enlace y revísalo luego.');
+    }
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final isHigh = verdict == 'red';
-    final isCaution = verdict == 'yellow';
-    final background = isHigh
-        ? colors.errorContainer
-        : isCaution
-        ? colors.tertiaryContainer
-        : colors.surfaceContainerHighest;
-    final foreground = isHigh
-        ? colors.onErrorContainer
-        : isCaution
-        ? colors.onTertiaryContainer
-        : colors.onSurfaceVariant;
-    final title = isHigh
-        ? 'Señal de riesgo alto'
-        : isCaution
-        ? 'Revisa esta llamada'
-        : 'Análisis en curso';
-    final detail = isHigh
-        ? 'No compartas claves ni códigos. Considera colgar.'
-        : isCaution
-        ? 'No confirmes datos personales ni envíes dinero.'
-        : monitoring
-        ? 'Aún no hay datos suficientes para evaluar.'
-        : 'Toca Protección para activar el análisis.';
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
+  Widget _riskSummary() => Card(
+    color: _riskColor.withValues(alpha: .11),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Icon(
-            isHigh ? Icons.warning_amber_rounded : Icons.info_outline,
-            color: foreground,
-          ),
+          Icon(Icons.shield_outlined, color: _riskColor, size: 30),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  _tier == 'red'
+                      ? 'Señal de riesgo alta'
+                      : _tier == 'amber'
+                      ? 'Señal de precaución'
+                      : 'Análisis activo',
                   style: TextStyle(
-                    color: foreground,
+                    color: _riskColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(detail, style: TextStyle(color: foreground)),
+                Text(_status),
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-}
+    ),
+  );
 
-class _RiskCard extends StatelessWidget {
-  const _RiskCard({
-    required this.verdict,
-    required this.score,
-    required this.transcript,
-    required this.sources,
-    required this.officialSources,
-    required this.onRepeatWarning,
-  });
-  final String verdict;
-  final double? score;
-  final String? transcript;
-  final String? sources;
-  final List<Map<String, Object?>> officialSources;
-  final VoidCallback onRepeatWarning;
-  @override
-  Widget build(BuildContext context) {
-    final palette = Theme.of(context).colorScheme;
-    final color = verdict == 'red'
-        ? palette.error
-        : verdict == 'yellow'
-        ? palette.tertiary
-        : palette.primary;
-    final label = verdict == 'red'
-        ? 'RIESGO ALTO'
-        : verdict == 'yellow'
-        ? 'PRECAUCIÓN'
-        : 'SIN DATOS';
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.circle, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                if (score != null)
-                  Text('Señal sintética: ${(score! * 100).round()}%'),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Es una estimación del proveedor, todavía no calibrada para llamadas de celular. No identifica a una persona ni confirma quién llama.',
-            ),
-            if (transcript != null) ...[
-              const SizedBox(height: 8),
-              Text('Texto reconocido: $transcript'),
-            ],
-            if (sources != null) ...[
-              const SizedBox(height: 8),
-              Text('Fuentes oficiales consultadas:\n$sources'),
-            ],
-            if (officialSources.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'Publicaciones de fuentes oficiales. No identifican a quien llama:',
-              ),
-              ...officialSources.map((source) {
-                final date = source['publishedAt']?.toString().split('T').first;
-                final excerpt = source['excerpt']?.toString() ?? '';
-                final url = source['url']?.toString() ?? '';
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(source['title']?.toString() ?? 'Fuente oficial'),
-                  subtitle: Text(
-                    '${source['sourceType'] == 'autoridad_o_justicia' ? 'Autoridad pública o justicia' : 'Entidad oficial'}${date == null ? '' : ' · $date'} · ${excerpt.isEmpty ? 'Abrir la publicación oficial' : excerpt}',
-                  ),
-                  trailing: const Icon(Icons.open_in_new),
-                  onTap: () async {
-                    final uri = Uri.tryParse(url);
-                    if (uri != null && uri.scheme == 'https') {
-                      await launchUrl(
-                        uri,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    }
-                  },
-                );
-              }),
-            ],
-            if (verdict == 'red')
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  onPressed: onRepeatWarning,
-                  icon: const Icon(Icons.volume_up_outlined),
-                  label: const Text('Repetir aviso en el teléfono'),
-                ),
-              ),
-          ],
+  Widget _profileNumber() => Card(
+    child: ExpansionTile(
+      leading: const Icon(Icons.phone_android),
+      title: const Text('Mi número Qhawix'),
+      subtitle: Text(_savedPhone ?? 'Guárdalo para recibir llamadas'),
+      initiallyExpanded: _savedPhone == null,
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      children: [
+        TextField(
+          controller: _myPhone,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            hintText: '+51987654321',
+            helperText:
+                'Incluye el código de país. Este número debe ser único.',
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: OutlinedButton.icon(
+            onPressed: _savePhone,
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Guardar número'),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _dialerBody() => ListView(
+    padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
+    children: [
+      _profileNumber(),
+      const SizedBox(height: 14),
+      Text(
+        'Llamar por Qhawix',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      Text(
+        'Marca el número de otra persona que ya usa Qhawix.',
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _targetPhone,
+        keyboardType: TextInputType.phone,
+        onChanged: (value) {
+          if (value != _selectedContactNumber && _selectedContactName != null) {
+            setState(() {
+              _selectedContactName = null;
+              _selectedContactNumber = null;
+            });
+          } else {
+            setState(() {});
+          }
+        },
+        textAlign: TextAlign.center,
+        style: Theme.of(
+          context,
+        ).textTheme.headlineMedium?.copyWith(letterSpacing: 1.2),
+        decoration: InputDecoration(
+          hintText: 'Número con código de país',
+          suffixIcon: IconButton(
+            tooltip: 'Borrar número',
+            onPressed: () => setState(() {
+              _targetPhone.clear();
+              _selectedContactName = null;
+              _selectedContactNumber = null;
+            }),
+            icon: const Icon(Icons.backspace_outlined),
+          ),
+          border: InputBorder.none,
         ),
       ),
+      if (_selectedContactName != null) ...[
+        Text(
+          _selectedContactName!,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+      ],
+      GridView.count(
+        crossAxisCount: 3,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 24,
+        childAspectRatio: 1.55,
+        children: [
+          _dialKey('1'),
+          _dialKey('2', letters: 'ABC'),
+          _dialKey('3', letters: 'DEF'),
+          _dialKey('4', letters: 'GHI'),
+          _dialKey('5', letters: 'JKL'),
+          _dialKey('6', letters: 'MNO'),
+          _dialKey('7', letters: 'PQRS'),
+          _dialKey('8', letters: 'TUV'),
+          _dialKey('9', letters: 'WXYZ'),
+          _dialKey('+'),
+          _dialKey('0'),
+          Material(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _removeDialDigit,
+              onLongPress: () => setState(() {
+                _targetPhone.clear();
+                _selectedContactName = null;
+                _selectedContactNumber = null;
+              }),
+              child: const SizedBox(
+                height: 62,
+                child: Icon(Icons.backspace_outlined),
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Card(
+        child: ListTile(
+          leading: Icon(
+            _consentAnalysis ? Icons.shield : Icons.shield_outlined,
+            color: _consentAnalysis ? Colors.green : null,
+          ),
+          title: Text(
+            _consentAnalysis ? 'Protección activada' : 'Activa la protección',
+          ),
+          subtitle: const Text('Revisa el permiso en la pestaña Protección.'),
+          onTap: () => setState(() => _selectedTab = 2),
+        ),
+      ),
+      const SizedBox(height: 4),
+      SizedBox(
+        height: 54,
+        child: FilledButton.icon(
+          onPressed:
+              _busy ||
+                  _callId != null ||
+                  !_consentAnalysis ||
+                  _savedPhone == null ||
+                  _savedPhone != _myPhone.text.trim() ||
+                  !RegExp(r'^\+[1-9][0-9]{7,14}$').hasMatch(_targetPhone.text)
+              ? null
+              : _startCall,
+          icon: Icon(_busy ? Icons.hourglass_top : Icons.call),
+          label: Text(_busy ? 'Conectando…' : 'Llamar'),
+        ),
+      ),
+      const SizedBox(height: 12),
+      Text(
+        'Qhawix analiza solo llamadas hechas dentro de la app. No identifica al titular de un número ni certifica quién habla.',
+        textAlign: TextAlign.center,
+      ),
+    ],
+  );
+
+  Widget _incomingBody() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircleAvatar(
+            radius: 42,
+            child: Icon(Icons.call_received, size: 38),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Llamada entrante',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 6),
+          const Text('Usuario Qhawix'),
+          const SizedBox(height: 18),
+          CheckboxListTile(
+            value: _consentAnalysis,
+            onChanged: (value) =>
+                setState(() => _consentAnalysis = value ?? false),
+            title: const Text('Acepto el análisis de voz'),
+            subtitle: const Text(
+              'Fragmentos de voz a Deepgram o Gemini de respaldo y una muestra de 10 segundos a TruthScan. QHAWIX no guarda el audio ni la transcripción; no identifica a quien habla.',
+            ),
+          ),
+          const SizedBox(height: 22),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: _rejectIncoming,
+                icon: const Icon(Icons.call_end),
+                label: const Text('Rechazar'),
+              ),
+              FilledButton.icon(
+                onPressed: _consentAnalysis ? _answerIncoming : null,
+                icon: const Icon(Icons.call),
+                label: const Text('Contestar'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _contactsBody() {
+    final query = _contactSearch.text.trim().toLowerCase();
+    final contacts = _deviceContacts
+        .where((contact) {
+          if (query.isEmpty) return true;
+          return (contact['name'] ?? '').toLowerCase().contains(query) ||
+              (contact['phone'] ?? '').toLowerCase().contains(query);
+        })
+        .toList(growable: false);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+          child: TextField(
+            controller: _contactSearch,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Buscar contacto',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
+                tooltip: 'Actualizar agenda',
+                onPressed: _loadingContacts
+                    ? null
+                    : () => _loadDeviceContacts(requestPermission: true),
+                icon: const Icon(Icons.refresh),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _loadingContacts
+              ? const Center(child: CircularProgressIndicator())
+              : !_contactsPermissionGranted
+              ? _contactsPermissionPrompt()
+              : contacts.isEmpty
+              ? Center(
+                  child: Text(
+                    _deviceContacts.isEmpty
+                        ? 'No encontramos números en tu agenda.'
+                        : 'No hay contactos que coincidan.',
+                  ),
+                )
+              : ListView.separated(
+                  itemCount: contacts.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final contact = contacts[index];
+                    final name = contact['name'] ?? 'Contacto';
+                    return ListTile(
+                      leading: CircleAvatar(
+                        child: Text(
+                          name.trim().isEmpty
+                              ? '?'
+                              : name.trim()[0].toUpperCase(),
+                        ),
+                      ),
+                      title: Text(name),
+                      subtitle: Text(contact['phone'] ?? ''),
+                      trailing: const Icon(Icons.call_outlined),
+                      onTap: () => _selectContact(contact),
+                    );
+                  },
+                ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
+          child: Text(
+            'Tus contactos se leen solo en este teléfono. Al elegir uno, su número se copia al marcador de EchoTrap.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
     );
   }
-}
 
-class _Notice extends StatelessWidget {
-  const _Notice({required this.text, this.color});
-  final String text;
-  final Color? color;
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: color ?? Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(12),
+  Widget _contactsPermissionPrompt() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.contacts_outlined, size: 44),
+          const SizedBox(height: 12),
+          Text(
+            _contactsError ?? 'Da permiso para mostrar tu agenda.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed:
+                _contactsError?.startsWith('El permiso está desactivado') ==
+                    true
+                ? _requestContactsSettings
+                : () => _loadDeviceContacts(requestPermission: true),
+            icon: const Icon(Icons.contacts),
+            label: Text(
+              _contactsError?.startsWith('El permiso está desactivado') == true
+                  ? 'Abrir Ajustes'
+                  : 'Permitir contactos',
+            ),
+          ),
+        ],
+      ),
     ),
-    child: Text(text),
   );
+
+  Widget _protectionBody() => ListView(
+    padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
+    children: [
+      Icon(
+        Icons.shield_outlined,
+        size: 56,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      const SizedBox(height: 12),
+      Text(
+        'Protección EchoTrap',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Analiza llamadas hechas dentro de Qhawix. Para transcribir, procesa fragmentos cortos con Deepgram o Gemini si Deepgram no está disponible. Una muestra de 10 segundos se revisa con TruthScan para estimar señales de audio sintético.',
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 18),
+      Card(
+        child: CheckboxListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          value: _consentAnalysis,
+          onChanged: (value) =>
+              setState(() => _consentAnalysis = value ?? false),
+          title: const Text('Permitir análisis de voz'),
+          subtitle: const Text(
+            'El audio se envía desde esta llamada a Deepgram o, como respaldo, a Gemini; una muestra de 10 segundos se envía a TruthScan. QHAWIX no conserva el audio ni la transcripción, solo las alertas de riesgo. Si aparecen señales de riesgo, puede consultar Exa usando solo la entidad mencionada. Informa a la otra persona antes de analizar; estas señales no identifican a alguien ni demuestran una estafa.',
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'EchoTrap no escucha ni bloquea llamadas normales del operador, WhatsApp u otras aplicaciones. La protección se aplica a llamadas realizadas y contestadas dentro de Qhawix.',
+          ),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Tus contactos permanecen en el teléfono; solo el número que selecciones se usa para buscar a la cuenta Qhawix correspondiente.',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+    ],
+  );
+
+  Widget _sourcesPanel() => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.travel_explore),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Fuentes públicas',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              if (_intelligenceLoading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _intelligenceLoading
+                ? 'Buscando alertas y canales oficiales…'
+                : _intelligenceSummary.isEmpty
+                ? 'La búsqueda se inicia si la conversación presenta señales de riesgo.'
+                : _intelligenceSummary,
+          ),
+          for (final source in _intelligenceSources)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              leading: const Icon(Icons.open_in_new, size: 18),
+              title: Text(source['title'] as String? ?? 'Fuente oficial'),
+              subtitle: Text(
+                [
+                  if (source['excerpt'] is String) source['excerpt'] as String,
+                  if (source['url'] is String) source['url'] as String,
+                ].join('\n'),
+              ),
+              onTap: source['url'] is String
+                  ? () => _openOfficialSource(source['url'] as String)
+                  : null,
+            ),
+          Text(
+            'Una alerta o noticia no demuestra que la persona que llama esté implicada. Si no aparece un resultado, eso tampoco confirma que sea legítima.',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _activeCallBody() => ListView(
+    padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+    children: [
+      const SizedBox(height: 12),
+      CircleAvatar(
+        radius: 44,
+        backgroundColor: _riskColor.withValues(alpha: .13),
+        child: Icon(
+          _isCallee ? Icons.shield_outlined : Icons.call_made,
+          color: _riskColor,
+          size: 42,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        _isCallee ? 'Protección de llamada activa' : 'Llamando por Qhawix',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 4),
+      Text(_status, textAlign: TextAlign.center),
+      const SizedBox(height: 18),
+      _riskSummary(),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Lo que dice la otra persona',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(_transcript.isEmpty ? 'Esperando voz…' : _transcript),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.graphic_eq, size: 19),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _voiceOriginStatus ??
+                          'Origen de voz: todavía no revisado',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'TruthScan entrega una estimación experimental de audio sintético. No reconoce la identidad, no determina si es una estafa y no sirve como prueba.',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+      _sourcesPanel(),
+      const SizedBox(height: 12),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FilledButton.tonalIcon(
+            onPressed: _toggleMute,
+            icon: Icon(_muted ? Icons.mic_off : Icons.mic),
+            label: Text(_muted ? 'Micrófono apagado' : 'Silenciar'),
+          ),
+          const SizedBox(width: 16),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => _leaveRoom(),
+            icon: const Icon(Icons.call_end),
+            label: const Text('Terminar'),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final inCall = _incoming != null || _callId != null;
+    final page = _selectedTab == 1
+        ? _contactsBody()
+        : _selectedTab == 2
+        ? _protectionBody()
+        : _dialerBody();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('EchoTrap'),
+        automaticallyImplyLeading: false,
+        actions: [
+          if (!inCall)
+            IconButton(
+              tooltip: 'Cerrar sesión',
+              icon: const Icon(Icons.logout),
+              onPressed: () => _db.auth.signOut(),
+            ),
+        ],
+      ),
+      body: _incoming != null
+          ? _incomingBody()
+          : _callId != null
+          ? _activeCallBody()
+          : page,
+      bottomNavigationBar: inCall
+          ? null
+          : NavigationBar(
+              selectedIndex: _selectedTab,
+              onDestinationSelected: (index) {
+                if (index == 1) {
+                  _showContacts();
+                } else {
+                  setState(() => _selectedTab = index);
+                }
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.dialpad_outlined),
+                  selectedIcon: Icon(Icons.dialpad),
+                  label: 'Llamar',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.contacts_outlined),
+                  selectedIcon: Icon(Icons.contacts),
+                  label: 'Contactos',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.shield_outlined),
+                  selectedIcon: Icon(Icons.shield),
+                  label: 'Protección',
+                ),
+              ],
+            ),
+    );
+  }
 }
