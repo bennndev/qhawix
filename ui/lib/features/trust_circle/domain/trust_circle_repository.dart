@@ -5,10 +5,16 @@ import 'sos.dart';
 import 'trust_circle_snapshot.dart';
 import 'trust_contact.dart';
 
-/// Port of the Trust Circle data. A real implementation talks to Supabase; the
-/// mock under `data/mock/` keeps everything in memory and sends nothing.
+/// Port of the Trust Circle data. Production uses on-device storage; the mock
+/// under `data/mock/` is for tests only and must never be the default in the app.
 abstract interface class TrustCircleRepository {
+  /// When true the UI shows the example-data banner (tests / demos only).
+  bool get usesExampleData;
+
   Future<TrustCircleSnapshot> load();
+
+  /// Marks the module onboarding (permissions) as finished on this device.
+  Future<ActionResult> completeSetup();
 
   /// Adds a phone-only contact, active at once. Nothing is sent: no
   /// invitation and no message.

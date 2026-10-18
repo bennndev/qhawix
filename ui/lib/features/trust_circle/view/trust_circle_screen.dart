@@ -21,6 +21,7 @@ import 'family_keyword_screen.dart';
 import 'labels.dart';
 import 'refuge_requests_screen.dart';
 import 'sos_screen.dart';
+import 'trust_circle_onboarding_screen.dart';
 import 'trust_circle_scaffold.dart';
 
 /// Entry screen of the Red de Confianza module: circle status, contacts and
@@ -49,6 +50,9 @@ class TrustCircleScreen extends StatelessWidget {
             const LoadingSkeleton(),
         ],
       );
+    }
+    if (!vm.setupComplete) {
+      return const TrustCircleOnboardingScreen();
     }
     final contacts = vm.contacts;
     final active = contacts.where((c) => c.isActive).length;
@@ -128,8 +132,8 @@ class TrustCircleScreen extends StatelessWidget {
                 icon: Icons.group_add_outlined,
                 title: 'Aún no tienes contactos',
                 message:
-                    'Agrega a alguien de confianza con su nombre y su número. '
-                    'No necesita tener la app.',
+                    'Agrega a alguien de confianza eligiendo un contacto del '
+                    'teléfono. No necesita tener la app.',
               )
             else
               for (var i = 0; i < contacts.length; i++)

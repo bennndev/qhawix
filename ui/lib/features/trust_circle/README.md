@@ -1,8 +1,10 @@
 # Trust Circle (Red de Confianza)
 
-UI for the Trust Circle module, backed by an in-memory **mock** repository.
-Every screen shows the "Datos de ejemplo" banner and no mock action ever claims
-that something was sent or delivered.
+UI for the Trust Circle module, backed by an on-device JSON store
+(`LocalTrustCircleRepository`). First open runs module onboarding (notifications
+rationale). Contacts are added with the system picker (no `READ_CONTACTS`).
+The in-memory mock under `data/mock/` is for tests and the safe-zone demo only;
+user-facing screens never default to it and never show "Datos de ejemplo".
 
 Run it on a phone from `ui/`:
 
@@ -14,8 +16,9 @@ flutter run -t lib/dev/trust_circle_demo_main.dart
 
 | Screen | File | Reached from |
 | --- | --- | --- |
+| Module onboarding (permissions) | `view/trust_circle_onboarding_screen.dart` | first open |
 | Circle overview (entry of the "Red" tab) | `view/trust_circle_screen.dart` | tab |
-| Add contact (active at once, nothing sent) | `view/add_contact_screen.dart` | overview |
+| Add contact (system picker first) | `view/add_contact_screen.dart` | overview |
 | Contact detail (permissions, channels, optional install invite, pause, remove) | `view/contact_detail_screen.dart` | contact row |
 | Alert preferences | `view/alert_preferences_screen.dart` | overview |
 | SOS | `view/sos_screen.dart` | overview |
@@ -24,10 +27,10 @@ flutter run -t lib/dev/trust_circle_demo_main.dart
 | Verification placeholder | `view/refuge_verification_screen.dart` | a request |
 | Family keyword | `view/family_keyword_screen.dart` | overview |
 
-Layers: `domain/` (pure Dart, `Clock` port, `TrustCircleRepository` port) ->
-`data/mock/` -> `viewmodel/` (`TrustCircleViewModel`, `FamilyKeywordViewModel`,
-both discard stale responses and run a command once on double tap) -> `view/`.
-`trustCircleProviders()` wires them; it accepts a repository and a clock for tests.
+Layers: `domain/` (pure Dart, `Clock` / `ContactPickerPort` /
+`TrustCircleRepository` ports) -> `data/` (`LocalTrustCircleRepository`,
+`NativeContactPicker`; `data/mock/` for tests) -> `viewmodel/` -> `view/`.
+`trustCircleProviders()` defaults to the local store; tests inject the mock.
 
 ## Contact kinds
 
@@ -35,9 +38,9 @@ A trusted contact does not need the app and is never invited when added. The
 earlier "invitation and mutual consent" rule is replaced by two kinds
 (`ContactKind` in `domain/trust_contact.dart`):
 
-- **`phoneOnly`** (default when adding): a name and a number typed by the
-  person, `active` at once, nothing sent. Reached by SMS or WhatsApp that is
-  composed on the person's own phone and sent by the person.
+- **`phoneOnly`** (default when adding): name and number from the system
+  picker (manual typing is the accessibility fallback), `active` at once,
+  nothing sent. Reached by SMS or WhatsApp composed on the person's own phone.
 - **`appUser`**: has QHAWIX. Reached only through the optional action
   "Invitar a instalar QHAWIX" in the contact detail. While the invite is open
   the contact stays `phoneOnly` and `active` and shows an "Invitación a
@@ -56,8 +59,8 @@ them with a rejected `ActionResult`; the UI only reflects them.
 | Overdue check-in alert from a server | no: the person writes to them | yes |
 | Optional "Invitar a instalar QHAWIX" | yes | not shown |
 
-The mock only states that nothing was sent ("Ejemplo: no se envió ninguna
-invitación.", "No se envió ningún mensaje."); the real mechanism comes later.
+SOS and install invites open the person's SMS or WhatsApp apps with a draft;
+QHAWIX never sends from the server to phone-only contacts.
 
 ## Lovable component -> Flutter widget
 
@@ -103,4 +106,5 @@ New shared widgets are in `core/widgets/` and use only theme tokens.
   app shell exists.
 - Verification before approving a remote Refuge request is a placeholder that
   says so; approving only changes example data.
-- The default repository is the mock until a Supabase-backed one exists.
+- Contacts and preferences persist on device; push/Realtime for `appUser`
+  contacts still need the gateway.

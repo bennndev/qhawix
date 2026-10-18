@@ -11,6 +11,7 @@ class TrustCircleSnapshot {
     required this.alertPreferences,
     this.checkIn,
     this.hasKeyword = false,
+    this.setupComplete = false,
   });
 
   final List<TrustContact> contacts;
@@ -18,6 +19,9 @@ class TrustCircleSnapshot {
   final AlertPreferences alertPreferences;
   final CheckIn? checkIn;
   final bool hasKeyword;
+
+  /// The person finished this module's permission onboarding.
+  final bool setupComplete;
 
   TrustContact? contactById(String id) {
     for (final c in contacts) {

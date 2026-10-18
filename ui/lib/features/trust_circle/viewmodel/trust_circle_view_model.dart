@@ -35,6 +35,8 @@ class TrustCircleViewModel extends ChangeNotifier {
   TrustCircleSnapshot? get snapshot => _snapshot;
   bool get loading => _loading;
   bool get failed => _failed;
+  bool get usesExampleData => _repository.usesExampleData;
+  bool get setupComplete => _snapshot?.setupComplete ?? false;
 
   List<TrustContact> get contacts => _snapshot?.contacts ?? const [];
   List<RefugeRequest> get pendingRequests =>
@@ -94,6 +96,9 @@ class TrustCircleViewModel extends ChangeNotifier {
     _running[key] = future;
     return future;
   }
+
+  Future<ActionResult> completeSetup() =>
+      _command('setup', _repository.completeSetup);
 
   Future<ActionResult> addContact({
     required String name,

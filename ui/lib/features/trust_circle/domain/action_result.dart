@@ -3,6 +3,9 @@ enum ActionOutcome {
   /// Nothing left the device: example data only.
   exampleOnly,
 
+  /// Persisted or prepared on this phone. Never claims SMS/push delivery alone.
+  saved,
+
   /// The action was refused (for example invalid input).
   rejected,
 }

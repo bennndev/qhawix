@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/widgets/mock_data_banner.dart';
 import '../../../core/widgets/qhawix_app_bar.dart';
 import '../../../core/widgets/status_banner.dart';
 import '../domain/action_result.dart';
+import '../domain/trust_circle_repository.dart';
 
-/// Frame shared by every Trust Circle screen: app bar, the example-data banner
-/// above the content, a centered column of at most the content width and the
-/// gutter. Children are separated by the large spacing step.
+/// Frame shared by every Trust Circle screen: app bar, optional example-data
+/// banner above the content, a centered column of at most the content width and
+/// the gutter. Children are separated by the large spacing step.
 class TrustCircleScaffold extends StatelessWidget {
   const TrustCircleScaffold({
     super.key,
@@ -22,6 +24,8 @@ class TrustCircleScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final space = context.space;
+    final showExampleBanner =
+        context.read<TrustCircleRepository>().usesExampleData;
     return Scaffold(
       appBar: QhawixAppBar(title: title),
       body: SafeArea(
@@ -35,7 +39,7 @@ class TrustCircleScaffold extends StatelessWidget {
                 vertical: space.md,
               ),
               children: [
-                const MockDataBanner(),
+                if (showExampleBanner) const MockDataBanner(),
                 for (final child in children) ...[
                   SizedBox(height: space.lg),
                   child,

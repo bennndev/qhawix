@@ -166,11 +166,18 @@ abstract final class ModuleCatalog {
       purpose: 'Contactos de confianza, alertas y SOS.',
       icon: Icons.group_outlined,
       routePath: '/red',
+      // Own onboarding inside the module (notifications + contact picker).
+      usesOwnOnboarding: true,
       skipActivationGate: true,
       permissions: [
         ModulePermissionNeed(
           title: 'Notificaciones',
-          why: 'Para avisarte de alertas cuando el contacto usa la app.',
+          why: 'Para avisarte de alertas de tu círculo cuando la app no está abierta.',
+        ),
+        ModulePermissionNeed(
+          title: 'Selector de contactos',
+          why:
+              'Eliges un contacto del sistema. QHAWIX no pide leer toda tu agenda.',
         ),
       ],
     ),

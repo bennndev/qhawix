@@ -5,6 +5,7 @@ import 'package:qhawix/core/widgets/mock_data_banner.dart';
 import 'package:qhawix/core/widgets/toggle_row.dart';
 import 'package:qhawix/features/trust_circle/domain/alert_preferences.dart';
 import 'package:qhawix/features/trust_circle/domain/check_in.dart';
+import 'package:qhawix/features/trust_circle/domain/contact_picker_port.dart';
 import 'package:qhawix/features/trust_circle/domain/trust_contact.dart';
 import 'package:qhawix/features/trust_circle/view/add_contact_screen.dart';
 import 'package:qhawix/features/trust_circle/view/alert_preferences_screen.dart';
@@ -20,7 +21,8 @@ import 'test_support.dart';
 
 const _tall = Size(360, 6000);
 
-final _addButton = find.widgetWithText(FilledButton, 'Agregar contacto');
+final _pickButton = find.widgetWithText(FilledButton, 'Elegir de contactos');
+final _manualAddButton = find.widgetWithText(FilledButton, 'Agregar contacto');
 
 final _remoteRefugeRow = find.ancestor(
   of: find.text('Puede pedir mi Refugio'),
@@ -148,6 +150,7 @@ void main() {
       await tester.pumpAndSettle();
       await _tapText(tester, 'Agregar contacto');
       expect(find.text('Agrega a alguien de confianza'), findsOneWidget);
+      expect(find.text('Elegir de contactos'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       await _tapText(tester, 'Ana Ejemplo');
@@ -157,37 +160,75 @@ void main() {
 
   group('add contact', () {
     testWidgets(
-      'needs no app and no invitation, and asks for typed data only',
+      'needs no app and no invitation, and leads with the system picker',
       (tester) async {
         await pumpModule(tester, const AddContactScreen(), size: _tall);
         expect(find.text('Consentimiento mutuo'), findsNothing);
         expect(find.textContaining('No necesita tener la app'), findsOneWidget);
-        expect(find.byType(TextField), findsNWidgets(2));
+        expect(find.text('Elegir de contactos'), findsOneWidget);
+        expect(find.byType(TextField), findsNothing);
         expect(find.textContaining('Avísale que la agregaste'), findsOneWidget);
       },
     );
 
-    testWidgets('asks for the missing data and adds nobody', (tester) async {
-      await pumpModule(tester, const AddContactScreen(), size: _tall);
-      await tester.ensureVisible(_addButton);
-      await tester.tap(_addButton);
+    testWidgets('adds from the picker without typing', (tester) async {
+      final picker = FakeContactPicker(
+        result: const PickedPhoneContact(
+          name: 'Eli Ejemplo',
+          phone: '+51 000 000 009',
+        ),
+      );
+      await pumpModule(
+        tester,
+        const AddContactScreen(),
+        size: _tall,
+        contactPicker: picker,
+      );
+      await tester.ensureVisible(_pickButton);
+      await tester.tap(_pickButton);
       await tester.pumpAndSettle();
-      expect(find.text('Escribe el nombre de la persona.'), findsOneWidget);
+      expect(picker.calls, 1);
+      expect(find.text('Contacto agregado'), findsOneWidget);
+      expect(find.text('Eli Ejemplo'), findsOneWidget);
+      expect(find.text('Activo'), findsOneWidget);
+      expect(find.text('Sin la app'), findsOneWidget);
       expect(
-        find.text('Escribe el número con código de país.'),
+        find.textContaining('No se envió ningún mensaje'),
         findsOneWidget,
       );
-      expect(viewModelOf(tester).contacts, hasLength(4));
+      expect(find.textContaining(claimsDelivery), findsNothing);
+      final added = viewModelOf(tester).contacts.last;
+      expect(added.status, ContactStatus.active);
+      expect(added.kind, ContactKind.phoneOnly);
+      expect(added.installInvitePending, isFalse);
     });
 
     testWidgets(
-      'adds the contact active and without the app, sending nothing',
+      'manual path asks for the missing data and adds nobody',
       (tester) async {
         await pumpModule(tester, const AddContactScreen(), size: _tall);
+        await _tapText(tester, 'Escribir nombre y número');
+        await tester.ensureVisible(_manualAddButton);
+        await tester.tap(_manualAddButton);
+        await tester.pumpAndSettle();
+        expect(find.text('Escribe el nombre de la persona.'), findsOneWidget);
+        expect(
+          find.text('Escribe el número con código de país.'),
+          findsOneWidget,
+        );
+        expect(viewModelOf(tester).contacts, hasLength(4));
+      },
+    );
+
+    testWidgets(
+      'manual path adds the contact active and without the app',
+      (tester) async {
+        await pumpModule(tester, const AddContactScreen(), size: _tall);
+        await _tapText(tester, 'Escribir nombre y número');
         await tester.enterText(find.byType(TextField).first, 'Eli Ejemplo');
         await tester.enterText(find.byType(TextField).last, '+51 000 000 009');
-        await tester.ensureVisible(_addButton);
-        await tester.tap(_addButton);
+        await tester.ensureVisible(_manualAddButton);
+        await tester.tap(_manualAddButton);
         await tester.pumpAndSettle();
         expect(find.text('Contacto agregado'), findsOneWidget);
         expect(find.text('Eli Ejemplo'), findsOneWidget);

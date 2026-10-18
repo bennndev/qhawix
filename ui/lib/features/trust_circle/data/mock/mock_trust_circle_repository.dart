@@ -12,6 +12,9 @@ import '../../domain/trust_contact.dart';
 /// changes local example state and answers with a sentence that says so.
 /// Developer builds and tests only; never a user-facing feature.
 class MockTrustCircleRepository implements TrustCircleRepository {
+  @override
+  bool get usesExampleData => true;
+
   MockTrustCircleRepository({required Clock clock}) : _clock = clock {
     final now = _clock.now();
     _contacts = [
@@ -86,7 +89,11 @@ class MockTrustCircleRepository implements TrustCircleRepository {
     alertPreferences: _prefs,
     checkIn: _checkIn,
     hasKeyword: _keyword != null,
+    setupComplete: true,
   );
+
+  @override
+  Future<ActionResult> completeSetup() async => _saved;
 
   @override
   Future<ActionResult> addContact({

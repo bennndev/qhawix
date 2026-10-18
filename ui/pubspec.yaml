@@ -37,6 +37,10 @@ dependencies:
   supabase_flutter: ^2.18.3
   go_router: ^17.5.0
   provider: ^6.1.5+1
+  path_provider: ^2.1.6
+  permission_handler: 13.0.2
+  flutter_native_contact_picker: 0.0.12
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -105,3 +109,7 @@ flutter:
           weight: 400
         - asset: assets/fonts/Inter-Medium.ttf
           weight: 500
+
+# permission_handler_android 14.x needs AGP 9; pin 13.0.1 (same as safe-zone spike).
+dependency_overrides:
+  permission_handler_android: 13.0.1

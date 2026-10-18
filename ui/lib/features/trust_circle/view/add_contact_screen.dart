@@ -6,16 +6,17 @@ import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/qhawix_buttons.dart';
 import '../../../core/widgets/qhawix_inputs.dart';
 import '../../../core/widgets/section_card.dart';
+import '../../../core/widgets/status_banner.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../domain/action_result.dart';
+import '../domain/contact_picker_port.dart';
 import '../domain/trust_contact.dart';
 import '../viewmodel/trust_circle_view_model.dart';
 import 'labels.dart';
 import 'trust_circle_scaffold.dart';
 
-/// The person types a name and a number. The contact is added at once and
-/// stays on the device: no invitation, no message, and QHAWIX never reads the
-/// phone's contacts. The person does not need the app.
+/// Adds a trusted contact from the system picker. Typing is only the manual
+/// alternative when the picker is cancelled or unavailable.
 class AddContactScreen extends StatefulWidget {
   const AddContactScreen({super.key});
 
@@ -30,7 +31,10 @@ class _AddContactScreenState extends State<AddContactScreen> {
   String? _addedName;
   String? _nameError;
   String? _phoneError;
+  String? _pickerNote;
   bool _saving = false;
+  bool _picking = false;
+  bool _showManual = false;
 
   @override
   void dispose() {
@@ -39,7 +43,30 @@ class _AddContactScreenState extends State<AddContactScreen> {
     super.dispose();
   }
 
-  Future<void> _add() async {
+  Future<void> _pickAndAdd() async {
+    setState(() {
+      _picking = true;
+      _pickerNote = null;
+      _result = null;
+    });
+    final picked =
+        await context.read<ContactPickerPort>().pickPhoneContact();
+    if (!mounted) return;
+    if (picked == null) {
+      setState(() {
+        _picking = false;
+        _pickerNote =
+            'No elegiste un contacto. Puedes intentar de nuevo o escribir '
+            'el nombre y el número.';
+        _showManual = true;
+      });
+      return;
+    }
+    setState(() => _picking = false);
+    await _save(name: picked.name, phone: picked.phone);
+  }
+
+  Future<void> _addManual() async {
     final name = _name.text.trim();
     final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
     setState(() {
@@ -49,14 +76,18 @@ class _AddContactScreenState extends State<AddContactScreen> {
           : null;
     });
     if (_nameError != null || _phoneError != null) return;
+    await _save(name: name, phone: _phone.text);
+  }
+
+  Future<void> _save({required String name, required String phone}) async {
     setState(() => _saving = true);
     final vm = context.read<TrustCircleViewModel>();
-    final result = await vm.addContact(name: name, phone: _phone.text);
+    final result = await vm.addContact(name: name, phone: phone);
     if (!mounted) return;
     setState(() {
       _saving = false;
       _result = result;
-      if (!result.isRejected) _addedName = name;
+      if (!result.isRejected) _addedName = name.trim();
     });
   }
 
@@ -66,6 +97,10 @@ class _AddContactScreenState extends State<AddContactScreen> {
     setState(() {
       _result = null;
       _addedName = null;
+      _pickerNote = null;
+      _nameError = null;
+      _phoneError = null;
+      _showManual = false;
     });
   }
 
@@ -81,22 +116,42 @@ class _AddContactScreenState extends State<AddContactScreen> {
         const PageHeader(
           title: 'Agrega a alguien de confianza',
           subtitle:
-              'Escribe su nombre y su número. No necesita tener la app ni '
+              'Elige un contacto del teléfono. No necesita tener la app ni '
               'recibir una invitación.',
         ),
         if (!added) ...[
-          QhawixTextField(
-            label: 'Nombre',
-            controller: _name,
-            errorText: _nameError,
+          PrimaryButton(
+            label: 'Elegir de contactos',
+            icon: Icons.contacts_outlined,
+            loading: _picking || _saving,
+            onPressed: (_picking || _saving) ? () {} : _pickAndAdd,
           ),
-          QhawixTextField(
-            label: 'Número de teléfono',
-            controller: _phone,
-            keyboardType: TextInputType.phone,
-            helperText: 'Con código de país, por ejemplo +51.',
-            errorText: _phoneError,
-          ),
+          if (_pickerNote != null) StatusBanner(message: _pickerNote!),
+          if (!_showManual)
+            TertiaryButton(
+              label: 'Escribir nombre y número',
+              onPressed: () => setState(() => _showManual = true),
+            )
+          else ...[
+            QhawixTextField(
+              label: 'Nombre',
+              controller: _name,
+              errorText: _nameError,
+            ),
+            QhawixTextField(
+              label: 'Número de teléfono',
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              helperText: 'Con código de país, por ejemplo +51.',
+              errorText: _phoneError,
+            ),
+            PrimaryButton(
+              label: 'Agregar contacto',
+              icon: Icons.person_add_alt_outlined,
+              loading: _saving,
+              onPressed: _saving ? () {} : _addManual,
+            ),
+          ],
         ],
         if (_result != null) ActionResultBanner(result: _result!),
         if (added)
@@ -137,13 +192,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           SecondaryButton(label: 'Agregar a otra persona', onPressed: _another),
-        ] else
-          PrimaryButton(
-            label: 'Agregar contacto',
-            icon: Icons.person_add_alt_outlined,
-            loading: _saving,
-            onPressed: _add,
-          ),
+        ],
       ],
     );
   }

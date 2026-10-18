@@ -1,5 +1,5 @@
-// Developer-only entry point for the Red de Confianza screens, backed by the
-// in-memory mock repository (nothing is sent). Run from ui/:
+// Developer-only entry point for the Red de Confianza screens with the real
+// on-device repository (empty until the person adds contacts). Run from ui/:
 //   flutter run -t lib/dev/trust_circle_demo_main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
