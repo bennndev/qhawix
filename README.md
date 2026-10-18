@@ -95,7 +95,8 @@ No simula transferencias: pone fricción real donde la persona decide pagar.
 
 ### 6. Red de Confianza
 
-- Contactos de confianza con alta por consentimiento mutuo. `[Requisito]`
+- Contactos de confianza sin necesidad de instalar la app ni aceptar una invitación (por ejemplo, tu mamá solo con su número). Quedan activos al agregarlos. `[Real]`
+- Contactos con la app, mediante una invitación opcional a instalar QHAWIX: habilitan alertas push, ubicación temporal en vivo y pedidos de Refugio remoto. `[Requisito]`
 - Alertas push, SMS o WhatsApp ante voz clonada, retención de pago o Refugio activado. `[Requisito]`
 - SOS con ubicación temporal compartida solo con consentimiento. `[Requisito]`
 - Llegada segura, check-ins y bienestar. `[Requisito]`

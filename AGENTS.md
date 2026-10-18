@@ -79,7 +79,9 @@ Each module is a vertical slice under `ui/lib/features/<folder>/` (layers below)
 - "Freeze account" is not possible without wallet integration: offer guided steps and deep links to official lock screens and hotlines, plus Refuge concealment. Direct integration is `[Futuro]` and needs an official agreement.
 
 **Trust Circle**
-- Contacts are added by mutual consent. Alerts (voice clone, payment hold, Refuge on) go by push first, SMS/WhatsApp as fallback. Location sharing is temporary and consented. Never send an alert that implies an emergency response QHAWIX cannot guarantee.
+- A trusted contact does **not** need the app or an invitation: the person adds a name and a phone number and the contact is active immediately (owner decision, 2026-10-17; it replaces the earlier "mutual consent" rule). Two kinds exist: `phoneOnly` (no app) and `appUser` (installed and linked, through an optional invitation to install QHAWIX).
+- `phoneOnly` contacts receive alerts and the SOS **by SMS or WhatsApp only**, as a message composed on the person's own phone. QHAWIX servers must never message someone who did not install the app (spam and privacy risk). Live temporary location sharing and remote Refuge requests require the app; the UI must say so next to that contact instead of hiding the feature.
+- Alerts (voice clone, payment hold, Refuge on) go by push first for `appUser` contacts, SMS/WhatsApp as fallback. Location sharing is temporary and consented by the person sharing it. Never send an alert that implies an emergency response QHAWIX cannot guarantee. Tell the person to let a new contact know, because that contact may receive messages from them.
 
 **Logbook**
 - Append-only per case while it exists; deleting a case removes evidence, decisions, links and timeline with no tombstone containing case data. Event summaries contain no quotes, secrets, contacts or amounts.
