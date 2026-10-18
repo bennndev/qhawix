@@ -1,0 +1,1110 @@
+{
+ "version": 1,
+ "viewBox": [
+  0,
+  0,
+  2000,
+  2000
+ ],
+ "units": "x,y in SVG user units; r in degrees; s/sx/sy scale; o opacity; d stroke draw 0-1; origin is a fraction of the part's fill box",
+ "initialState": "idle",
+ "parts": {
+  "root": {
+   "origin": [
+    0.5,
+    1
+   ]
+  },
+  "browL": {
+   "origin": [
+    0.086,
+    0.137
+   ]
+  },
+  "browR": {
+   "origin": [
+    0.914,
+    0.137
+   ]
+  },
+  "eyeL": {
+   "origin": [
+    0.5,
+    0.5
+   ]
+  },
+  "eyeR": {
+   "origin": [
+    0.5,
+    0.5
+   ]
+  },
+  "happyL": {
+   "origin": [
+    0.5,
+    0.5
+   ],
+   "rest": {
+    "o": 0
+   }
+  },
+  "happyR": {
+   "origin": [
+    0.5,
+    0.5
+   ],
+   "rest": {
+    "o": 0
+   }
+  },
+  "dot1": {
+   "rest": {
+    "o": 0
+   }
+  },
+  "dot2": {
+   "rest": {
+    "o": 0
+   }
+  },
+  "dot3": {
+   "rest": {
+    "o": 0
+   }
+  },
+  "gearA": {
+   "rest": {
+    "o": 0
+   }
+  },
+  "gearB": {
+   "rest": {
+    "o": 0
+   }
+  },
+  "check": {
+   "origin": [
+    0.5,
+    0.5
+   ],
+   "rest": {
+    "o": 0,
+    "d": 0
+   }
+  },
+  "spark1": {
+   "rest": {
+    "o": 0,
+    "sx": 0,
+    "sy": 0
+   }
+  },
+  "spark2": {
+   "rest": {
+    "o": 0,
+    "sx": 0,
+    "sy": 0
+   }
+  },
+  "spark3": {
+   "rest": {
+    "o": 0,
+    "sx": 0,
+    "sy": 0
+   }
+  },
+  "spark4": {
+   "rest": {
+    "o": 0,
+    "sx": 0,
+    "sy": 0
+   }
+  }
+ },
+ "states": {
+  "idle": {
+   "loop": true,
+   "pose": 0,
+   "tracks": [
+    {
+     "part": "root",
+     "duration": 4200,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.5,
+       "y": -6,
+       "sx": 0.996,
+       "sy": 1.014
+      },
+      {
+       "offset": 1
+      }
+     ]
+    },
+    {
+     "part": "eyeL",
+     "duration": 6000,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.18
+      },
+      {
+       "offset": 0.26,
+       "x": 9,
+       "y": -3
+      },
+      {
+       "offset": 0.5,
+       "x": 9,
+       "y": -3
+      },
+      {
+       "offset": 0.57,
+       "x": -9,
+       "y": 0
+      },
+      {
+       "offset": 0.74,
+       "x": -9,
+       "y": 0
+      },
+      {
+       "offset": 0.81
+      },
+      {
+       "offset": 0.89
+      },
+      {
+       "offset": 0.905,
+       "sy": 0.08,
+       "y": 4
+      },
+      {
+       "offset": 0.93
+      },
+      {
+       "offset": 1
+      }
+     ]
+    },
+    {
+     "part": "eyeR",
+     "duration": 6000,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.18
+      },
+      {
+       "offset": 0.26,
+       "x": 9,
+       "y": -3
+      },
+      {
+       "offset": 0.5,
+       "x": 9,
+       "y": -3
+      },
+      {
+       "offset": 0.57,
+       "x": -9,
+       "y": 0
+      },
+      {
+       "offset": 0.74,
+       "x": -9,
+       "y": 0
+      },
+      {
+       "offset": 0.81
+      },
+      {
+       "offset": 0.89
+      },
+      {
+       "offset": 0.905,
+       "sy": 0.08,
+       "y": 4
+      },
+      {
+       "offset": 0.93
+      },
+      {
+       "offset": 1
+      }
+     ]
+    },
+    {
+     "part": "browL",
+     "duration": 3000,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.5,
+       "r": -2,
+       "y": -2
+      },
+      {
+       "offset": 1
+      }
+     ]
+    },
+    {
+     "part": "browR",
+     "duration": 3000,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.5,
+       "r": 2,
+       "y": -2
+      },
+      {
+       "offset": 1
+      }
+     ]
+    }
+   ]
+  },
+  "thinking": {
+   "loop": true,
+   "pose": 0,
+   "tracks": [
+    {
+     "part": "root",
+     "duration": 3600,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": -4,
+       "y": 0
+      },
+      {
+       "offset": 0.5,
+       "r": -2.2,
+       "y": -5
+      },
+      {
+       "offset": 1,
+       "r": -4,
+       "y": 0
+      }
+     ]
+    },
+    {
+     "part": "eyeL",
+     "duration": 4200,
+     "keyframes": [
+      {
+       "offset": 0,
+       "x": 12,
+       "y": -13,
+       "sy": 0.92
+      },
+      {
+       "offset": 0.4,
+       "x": 12,
+       "y": -13,
+       "sy": 0.92
+      },
+      {
+       "offset": 0.5,
+       "x": -11,
+       "y": -15,
+       "sy": 0.92
+      },
+      {
+       "offset": 0.9,
+       "x": -11,
+       "y": -15,
+       "sy": 0.92
+      },
+      {
+       "offset": 1,
+       "x": 12,
+       "y": -13,
+       "sy": 0.92
+      }
+     ]
+    },
+    {
+     "part": "eyeR",
+     "duration": 4200,
+     "keyframes": [
+      {
+       "offset": 0,
+       "x": 12,
+       "y": -13,
+       "sy": 0.92
+      },
+      {
+       "offset": 0.4,
+       "x": 12,
+       "y": -13,
+       "sy": 0.92
+      },
+      {
+       "offset": 0.5,
+       "x": -11,
+       "y": -15,
+       "sy": 0.92
+      },
+      {
+       "offset": 0.9,
+       "x": -11,
+       "y": -15,
+       "sy": 0.92
+      },
+      {
+       "offset": 1,
+       "x": 12,
+       "y": -13,
+       "sy": 0.92
+      }
+     ]
+    },
+    {
+     "part": "dot1",
+     "duration": 1500,
+     "keyframes": [
+      {
+       "offset": 0,
+       "s": 0.3,
+       "o": 0.15
+      },
+      {
+       "offset": 0.2,
+       "s": 1,
+       "o": 1
+      },
+      {
+       "offset": 0.42000000000000004,
+       "s": 0.3,
+       "o": 0.15
+      },
+      {
+       "offset": 1,
+       "s": 0.3,
+       "o": 0.15
+      }
+     ]
+    },
+    {
+     "part": "dot2",
+     "duration": 1500,
+     "keyframes": [
+      {
+       "offset": 0,
+       "s": 0.3,
+       "o": 0.15
+      },
+      {
+       "offset": 0.28,
+       "s": 0.3,
+       "o": 0.15
+      },
+      {
+       "offset": 0.5,
+       "s": 1,
+       "o": 1
+      },
+      {
+       "offset": 0.72,
+       "s": 0.3,
+       "o": 0.15
+      },
+      {
+       "offset": 1,
+       "s": 0.3,
+       "o": 0.15
+      }
+     ]
+    },
+    {
+     "part": "dot3",
+     "duration": 1500,
+     "keyframes": [
+      {
+       "offset": 0,
+       "s": 0.3,
+       "o": 0.15
+      },
+      {
+       "offset": 0.5800000000000001,
+       "s": 0.3,
+       "o": 0.15
+      },
+      {
+       "offset": 0.8,
+       "s": 1,
+       "o": 1
+      },
+      {
+       "offset": 1,
+       "s": 0.3,
+       "o": 0.15
+      }
+     ]
+    },
+    {
+     "part": "browL",
+     "duration": 3600,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": -6,
+       "y": -2
+      },
+      {
+       "offset": 0.5,
+       "r": -8,
+       "y": -3
+      },
+      {
+       "offset": 1,
+       "r": -6,
+       "y": -2
+      }
+     ]
+    },
+    {
+     "part": "browR",
+     "duration": 3600,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": -5
+      },
+      {
+       "offset": 0.5,
+       "r": -7
+      },
+      {
+       "offset": 1,
+       "r": -5
+      }
+     ]
+    }
+   ]
+  },
+  "working": {
+   "loop": true,
+   "pose": 0,
+   "tracks": [
+    {
+     "part": "root",
+     "duration": 520,
+     "keyframes": [
+      {
+       "offset": 0,
+       "y": 0,
+       "sy": 1
+      },
+      {
+       "offset": 0.5,
+       "y": -6,
+       "sy": 0.994,
+       "r": 0.6
+      },
+      {
+       "offset": 1,
+       "y": 0,
+       "sy": 1,
+       "r": 0
+      }
+     ]
+    },
+    {
+     "part": "eyeL",
+     "duration": 1700,
+     "keyframes": [
+      {
+       "offset": 0,
+       "x": -15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 0.42,
+       "x": 15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 0.5,
+       "x": 15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 0.92,
+       "x": -15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 1,
+       "x": -15,
+       "y": 5,
+       "sy": 0.72
+      }
+     ]
+    },
+    {
+     "part": "eyeR",
+     "duration": 1700,
+     "keyframes": [
+      {
+       "offset": 0,
+       "x": -15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 0.42,
+       "x": 15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 0.5,
+       "x": 15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 0.92,
+       "x": -15,
+       "y": 5,
+       "sy": 0.72
+      },
+      {
+       "offset": 1,
+       "x": -15,
+       "y": 5,
+       "sy": 0.72
+      }
+     ]
+    },
+    {
+     "part": "gearA",
+     "duration": 2400,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": 0,
+       "o": 1
+      },
+      {
+       "offset": 1,
+       "r": 360,
+       "o": 1
+      }
+     ],
+     "easing": "linear"
+    },
+    {
+     "part": "gearB",
+     "duration": 2400,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": 0,
+       "o": 1
+      },
+      {
+       "offset": 1,
+       "r": -360,
+       "o": 1
+      }
+     ],
+     "easing": "linear"
+    },
+    {
+     "part": "browL",
+     "duration": 1800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": 5
+      },
+      {
+       "offset": 0.5,
+       "r": 7
+      },
+      {
+       "offset": 1,
+       "r": 5
+      }
+     ]
+    },
+    {
+     "part": "browR",
+     "duration": 1800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "r": -5
+      },
+      {
+       "offset": 0.5,
+       "r": -7
+      },
+      {
+       "offset": 1,
+       "r": -5
+      }
+     ]
+    }
+   ]
+  },
+  "success": {
+   "loop": false,
+   "next": "idle",
+   "pose": 0.6,
+   "reducedHoldMs": 1800,
+   "tracks": [
+    {
+     "part": "root",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.1,
+       "sx": 1.05,
+       "sy": 0.9
+      },
+      {
+       "offset": 0.22,
+       "sx": 0.96,
+       "sy": 1.07,
+       "y": -110,
+       "ease": "ease-out"
+      },
+      {
+       "offset": 0.34,
+       "sx": 1,
+       "sy": 1,
+       "y": -150,
+       "ease": "ease-in"
+      },
+      {
+       "offset": 0.46,
+       "sx": 1.06,
+       "sy": 0.9,
+       "y": 0,
+       "ease": "ease-out"
+      },
+      {
+       "offset": 0.54,
+       "sx": 0.98,
+       "sy": 1.03,
+       "y": -14
+      },
+      {
+       "offset": 0.62
+      },
+      {
+       "offset": 1
+      }
+     ]
+    },
+    {
+     "part": "eyeL",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.2
+      },
+      {
+       "offset": 0.24,
+       "o": 0
+      },
+      {
+       "offset": 0.78,
+       "o": 0
+      },
+      {
+       "offset": 0.82
+      },
+      {
+       "offset": 1
+      }
+     ],
+     "easing": "linear"
+    },
+    {
+     "part": "eyeR",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.2
+      },
+      {
+       "offset": 0.24,
+       "o": 0
+      },
+      {
+       "offset": 0.78,
+       "o": 0
+      },
+      {
+       "offset": 0.82
+      },
+      {
+       "offset": 1
+      }
+     ],
+     "easing": "linear"
+    },
+    {
+     "part": "happyL",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.2,
+       "o": 0
+      },
+      {
+       "offset": 0.24,
+       "o": 1
+      },
+      {
+       "offset": 0.78,
+       "o": 1
+      },
+      {
+       "offset": 0.82,
+       "o": 0
+      },
+      {
+       "offset": 1,
+       "o": 0
+      }
+     ],
+     "easing": "linear"
+    },
+    {
+     "part": "happyR",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.2,
+       "o": 0
+      },
+      {
+       "offset": 0.24,
+       "o": 1
+      },
+      {
+       "offset": 0.78,
+       "o": 1
+      },
+      {
+       "offset": 0.82,
+       "o": 0
+      },
+      {
+       "offset": 1,
+       "o": 0
+      }
+     ],
+     "easing": "linear"
+    },
+    {
+     "part": "check",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "o": 0,
+       "d": 0,
+       "s": 0.8
+      },
+      {
+       "offset": 0.3,
+       "o": 1,
+       "d": 0,
+       "s": 0.8
+      },
+      {
+       "offset": 0.46,
+       "o": 1,
+       "d": 1,
+       "s": 1.15
+      },
+      {
+       "offset": 0.55,
+       "o": 1,
+       "d": 1,
+       "s": 1
+      },
+      {
+       "offset": 0.86,
+       "o": 1,
+       "d": 1,
+       "s": 1
+      },
+      {
+       "offset": 0.97,
+       "o": 0,
+       "d": 1,
+       "s": 1
+      },
+      {
+       "offset": 1,
+       "o": 0,
+       "d": 1,
+       "s": 1
+      }
+     ],
+     "easing": "ease-out"
+    },
+    {
+     "part": "spark1",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.3,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.32,
+       "s": 0.2,
+       "o": 1
+      },
+      {
+       "offset": 0.44,
+       "s": 1.25,
+       "r": 45,
+       "o": 1
+      },
+      {
+       "offset": 0.5800000000000001,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      },
+      {
+       "offset": 1,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      }
+     ],
+     "easing": "ease-out"
+    },
+    {
+     "part": "spark2",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.33,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.35000000000000003,
+       "s": 0.2,
+       "o": 1
+      },
+      {
+       "offset": 0.47000000000000003,
+       "s": 1.25,
+       "r": 45,
+       "o": 1
+      },
+      {
+       "offset": 0.6100000000000001,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      },
+      {
+       "offset": 1,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      }
+     ],
+     "easing": "ease-out"
+    },
+    {
+     "part": "spark3",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.36,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.38,
+       "s": 0.2,
+       "o": 1
+      },
+      {
+       "offset": 0.5,
+       "s": 1.25,
+       "r": 45,
+       "o": 1
+      },
+      {
+       "offset": 0.64,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      },
+      {
+       "offset": 1,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      }
+     ],
+     "easing": "ease-out"
+    },
+    {
+     "part": "spark4",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.39,
+       "s": 0,
+       "o": 0
+      },
+      {
+       "offset": 0.41000000000000003,
+       "s": 0.2,
+       "o": 1
+      },
+      {
+       "offset": 0.53,
+       "s": 1.25,
+       "r": 45,
+       "o": 1
+      },
+      {
+       "offset": 0.67,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      },
+      {
+       "offset": 1,
+       "s": 0,
+       "r": 90,
+       "o": 0
+      }
+     ],
+     "easing": "ease-out"
+    },
+    {
+     "part": "browL",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.2
+      },
+      {
+       "offset": 0.28,
+       "r": -7,
+       "y": -3
+      },
+      {
+       "offset": 0.78,
+       "r": -7,
+       "y": -3
+      },
+      {
+       "offset": 0.9
+      },
+      {
+       "offset": 1
+      }
+     ]
+    },
+    {
+     "part": "browR",
+     "duration": 2800,
+     "keyframes": [
+      {
+       "offset": 0
+      },
+      {
+       "offset": 0.2
+      },
+      {
+       "offset": 0.28,
+       "r": 7,
+       "y": -3
+      },
+      {
+       "offset": 0.78,
+       "r": 7,
+       "y": -3
+      },
+      {
+       "offset": 0.9
+      },
+      {
+       "offset": 1
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,126 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>selftest</title>
+<div id="host"></div>
+<pre id="result">pending</pre>
+<script type="module">
+  import { createMascot } from '../src/mascot-engine.js';
+  const out = { checks: {}, errors: [] };
+  const check = (name, ok, detail) => { out.checks[name] = ok; if (!ok) out.errors.push(`${name}: ${detail ?? ''}`); };
+  try {
+    const [spec, svg] = await Promise.all([
+      fetch('../src/mascot.spec.json').then((r) => r.json()),
+      fetch('../assets/mascot.svg').then((r) => r.text()),
+    ]);
+    document.getElementById('host').innerHTML = svg;
+    const root = document.querySelector('svg');
+    const part = (n) => root.querySelector(`[data-part="${n}"]`);
+    const tf = (n) => getComputedStyle(part(n)).transform;
+    const op = (n) => parseFloat(getComputedStyle(part(n)).opacity);
+
+    const m = createMascot(root, spec, { reducedMotion: false });
+    check('starts in idle', m.state === 'idle', m.state);
+
+    // Deterministic sampling (no blend, paused, seek).
+    m.setState('idle', { blend: false }); m.seek(0); const idle0 = tf('root');
+    m.seek(2100);
+    check('idle root breathes', tf('root') !== idle0, `${idle0} vs ${tf('root')}`);
+    m.seek(0.905 * 6000);
+    check('idle blink squashes eyes', tf('eyeL').includes('0.08'), tf('eyeL'));
+
+    m.setState('thinking', { blend: false }); m.seek(1800);
+    check('thinking raises left brow', tf('browL') !== 'matrix(1, 0, 0, 1, 0, 0)' && tf('browL') !== 'none', tf('browL'));
+    check('thinking shows dots', op('dot2') > 0.9 || op('dot1') > 0.9 || op('dot3') > 0.9, `${op('dot1')} ${op('dot2')} ${op('dot3')}`);
+
+    m.setState('idle', { blend: false }); m.seek(0);
+    check('leaving thinking hides dots', op('dot2') === 0, op('dot2'));
+
+    m.setState('working', { blend: false }); m.seek(850);
+    check('working shows gears', op('gearA') === 1, op('gearA'));
+    check('working narrows eyes', tf('eyeL').includes('0.72'), tf('eyeL'));
+    m.seek(1200);
+    const g1 = tf('gearA'); m.seek(1800);
+    check('working gear rotates', g1 !== tf('gearA'), g1);
+
+    m.setState('success', { blend: false }); m.seek(2800 * 0.55);
+    check('success shows check drawn', op('check') === 1 && parseFloat(getComputedStyle(part('check')).strokeDashoffset) === 0, getComputedStyle(part('check')).strokeDashoffset);
+    check('success swaps eyes for happy arcs', op('eyeL') === 0 && op('happyL') === 1, `${op('eyeL')} ${op('happyL')}`);
+    m.seek(2800 * 0.34);
+    check('success jumps', tf('root').includes('-150'), tf('root'));
+
+    // Real-time: one-shot returns to idle (sped up 25x), and listeners fire.
+    const seen = [];
+    const fast = createMascot(root, spec, { reducedMotion: false, speed: 25 });
+    fast.on((_, d) => seen.push(`${d.from}>${d.to}`));
+    fast.setState('success');
+    await new Promise((r) => setTimeout(r, 700));
+    check('success auto-returns to idle', fast.state === 'idle', fast.state);
+    check('state events emitted', seen.join() === 'idle>success,success>idle', seen.join());
+    fast.destroy();
+
+    // Reduced motion freezes on a static pose and still returns after the hold.
+    const calm = createMascot(root, spec, { reducedMotion: true });
+    calm.setState('working');
+    await new Promise((r) => setTimeout(r, 50));
+    const a = tf('gearA'); await new Promise((r) => setTimeout(r, 120));
+    check('reduced motion does not animate', a === tf('gearA'), `${a} vs ${tf('gearA')}`);
+    calm.destroy();
+
+    // Themes: the body colour comes from --mascot-body and every theme in the palette is a valid hex.
+    const palette = await fetch('../src/mascot.themes.json').then((r) => r.json());
+    check('palette has the 6 reference colours', palette.themes.length === 6 && palette.themes.every((t) => /^#[0-9A-F]{6}$/.test(t.body)), JSON.stringify(palette.themes));
+    const body = root.querySelector('path.sil');
+    root.style.setProperty('--mascot-body', '#9259FE');
+    check('theme colour recolours the body', getComputedStyle(body).fill === 'rgb(146, 89, 254)', getComputedStyle(body).fill);
+    root.style.removeProperty('--mascot-body');
+
+    // The form must not change: the idle silhouette equals the original artwork's (flood fill from outside).
+    const rest = createMascot(root, spec, { reducedMotion: false });
+    rest.setState('idle', { blend: false }); rest.seek(0);
+    const N = 500;
+    const toImage = (markup) => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markup);
+    });
+    const silhouette = async (markup) => {
+      const img = await toImage(markup);
+      const c = document.createElement('canvas'); c.width = c.height = N;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.fillStyle = '#fff'; g.fillRect(0, 0, N, N); g.drawImage(img, 0, 0, N, N);
+      const px = g.getImageData(0, 0, N, N).data;
+      const outside = new Uint8Array(N * N);
+      const isWhite = (i) => px[i * 4] > 235 && px[i * 4 + 1] > 235 && px[i * 4 + 2] > 235;
+      const stack = [];
+      for (let k = 0; k < N; k++) for (const i of [k, (N - 1) * N + k, k * N, k * N + N - 1]) if (!outside[i] && isWhite(i)) { outside[i] = 1; stack.push(i); }
+      while (stack.length) {
+        const i = stack.pop(); const x = i % N; const y = (i / N) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx; const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+          const j = ny * N + nx;
+          if (!outside[j] && isWhite(j)) { outside[j] = 1; stack.push(j); }
+        }
+      }
+      return outside;
+    };
+    const original = await (await fetch('/original.svg')).text();
+    const clone = root.cloneNode(true);
+    clone.querySelector('[data-part="fx"]').remove();
+    clone.setAttribute('width', N); clone.setAttribute('height', N);
+    const [want, got] = await Promise.all([silhouette(original.replace('<svg ', `<svg width="${N}" height="${N}" `)), silhouette(new XMLSerializer().serializeToString(clone))]);
+    let inter = 0, union = 0;
+    for (let i = 0; i < N * N; i++) { const p = !want[i], q = !got[i]; if (p && q) inter++; if (p || q) union++; }
+    check('idle silhouette equals the original outline (IoU >= 0.998)', inter / union >= 0.998, `IoU ${(inter / union).toFixed(5)}`);
+    rest.destroy();
+
+    // Spec/rig drift is loud.
+    let threw = false;
+    try { createMascot(document.createElementNS('http://www.w3.org/2000/svg', 'svg'), spec); } catch { threw = true; }
+    check('missing rig part throws', threw);
+  } catch (e) {
+    out.errors.push(String(e?.stack ?? e));
+  }
+  document.getElementById('result').textContent = JSON.stringify(out);
+</script>
