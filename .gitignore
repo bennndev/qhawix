@@ -11,3 +11,7 @@ CLAUDE.local.md
 
 # Local skill registry (generated per machine)
 .atl/
+
+# Local CLI state and Gradle reports
+**/supabase/.temp/
+ui/android/build/

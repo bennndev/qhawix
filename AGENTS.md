@@ -149,7 +149,7 @@ Request each permission just in time, at the module that needs it, with an expla
 | Microphone + foreground service (microphone type) | EchoTrap | Started by the person; visible notification |
 | Call-screening role | EchoTrap | No audio access |
 | Location, including background "all the time" | Refuge (safe-zone) | Local processing; zones not tracking; guided OEM auto-start required on Honor |
-| `SEND_SMS` | Refuge (safe-zone) | Direct SMS from the person's phone; no `READ_SMS` |
+| `SEND_SMS` | Refuge (safe-zone), EchoTrap scam warning | Direct SMS from the person's phone; no `READ_SMS`. EchoTrap asks it only when a call turns red |
 | Exact alarms / boot | Refuge (safe-zone) | Countdown and window-open; force-stop cancels until reopen |
 | Battery optimization exemption | Refuge (safe-zone) | Requested; not sufficient alone on Honor without App launch |
 | Usage stats / overlay | Refuge tier A | Subject to spike S-03 |
