@@ -630,7 +630,7 @@ The mascot is the **Guardian de Comportamiento** (code name `GuardianMascot`), a
 
 | State | Source | Motion | Loop |
 | --- | --- | --- | --- |
-| `idle` | rig | Slow breathing, occasional blink (4.2 s and 6 s) | Loop |
+| `idle` | rig, overridden by the owner | Asleep and listening: eyes closed, head slightly drooped, slow breathing (5.6 s). About every 8 s it turns its head a few degrees toward one side, alternating sides, with one tuft perking up (under 10 degrees), then settles back without waking. Faint, calm "z" marks. Reduce motion freezes it asleep. This replaces the rig's breathing-and-blink idle (owner request, 2026-10-17); `thinking`, `working` and `success` still match the Node spec. | Loop (16.8 s) |
 | `thinking` | rig | Head tilt, glancing eyes, three pulsing dots | Loop |
 | `working` | rig | Quick bounce, two gears turning, squinted scan | Loop; **fastest loop allowed (520 ms bounce)** |
 | `success` | rig | Squash, hop, check mark drawn, four sparks, back to `idle` (2.8 s) | One-shot |
@@ -736,6 +736,7 @@ Recorded 2026-10-17.
 3. **Animation style:** the "Grok Bot style" from `pet/animated/docs/EVALUATION.md`, inside the calm Motion budget; no loop faster than `working`.
 4. **Implementation:** pure-Dart `CustomPainter` with an `AnimationController`, no new dependency, in `ui/lib/core/widgets/guardian_mascot/`, demo at `ui/lib/dev/guardian_mascot_demo_main.dart`.
 5. **Fonts:** bundling the five font files and the `fonts:` entry in `ui/pubspec.yaml` is approved.
+6. **Resting state:** at rest the mascot is asleep and listening (`idle`: closed eyes, slow breathing, an occasional head turn toward an imagined sound). Decided after seeing the demo on a phone.
 
 ## Open questions
 
