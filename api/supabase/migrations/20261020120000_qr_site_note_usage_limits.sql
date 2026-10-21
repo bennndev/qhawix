@@ -23,7 +23,7 @@ as $$
 declare
   next_count integer;
 begin
-  if current_setting('request.jwt.claim.role', true) is distinct from 'service_role' then
+  if auth.role() is distinct from 'service_role' then
     raise exception 'service role required';
   end if;
   if p_user_id is null or p_daily_limit < 1 or p_daily_limit > 500 then

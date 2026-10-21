@@ -416,3 +416,24 @@ Deno.test("rejects an explicitly foreign subject returned by the provider", asyn
     "does not delete a foreign row",
   );
 });
+
+Deno.test("owners can forget a note after exhausting the daily quota", async () => {
+  const { services, call } = setup();
+  const saved = await call(ana, {
+    action: "save",
+    host: "mitienda.pe",
+    note: "Confirmé la tienda",
+  });
+  assert(saved.status === 200, JSON.stringify(saved));
+  services.quotaCounts.set(ana.id, DAILY_LIMIT);
+  const deleted = await call(ana, { action: "delete", host: "mitienda.pe" });
+  assert(
+    deleted.status === 200 && deleted.body.status === "deleted" &&
+      deleted.body.removed === 1,
+    JSON.stringify(deleted),
+  );
+  assert(
+    services.quotaCounts.get(ana.id) === DAILY_LIMIT,
+    "forgetting does not consume quota",
+  );
+});

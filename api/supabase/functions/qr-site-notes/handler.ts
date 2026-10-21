@@ -104,9 +104,11 @@ export function createHandler(deps: Deps) {
     const memory = memoryConfig(deps.env);
     if (!memory) return fail("not_configured", 503);
 
-    const quota = await consumeQuota(userId, deps);
-    if (quota === "unavailable") return fail("provider_unavailable", 503);
-    if (quota === "exceeded") return fail("rate_limited", 429);
+    if (input.action !== "delete") {
+      const quota = await consumeQuota(userId, deps);
+      if (quota === "unavailable") return fail("provider_unavailable", 503);
+      if (quota === "exceeded") return fail("rate_limited", 429);
+    }
 
     const client = new MemoryClient(memory, subjectFor(userId), deps.fetch);
     const externalId = await externalIdFor(input.host);

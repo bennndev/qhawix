@@ -6,6 +6,6 @@ The 20-second video shows manual QR content review, explicit consent to send the
 
 For recording only, a temporary copy of the Android app gained Flutter web scaffolding. Its reputation provider used the existing UnconfiguredQrReputationRepository because the native Web Risk client uses dart:io HttpClient, unavailable on web. No note-feature code was substituted. This is a developer web preview, not native Android verification.
 
-Validation: 508 Flutter tests, Dart analysis, 19 Deno handler tests, Deno checks/lint/format. The local Supabase pgTAP quota test and native Android device verification remain to be run by maintainers before enabling this optional feature. It is off by default.
+Validation: 508 Flutter tests, Dart analysis, 20 Deno handler tests, Deno checks/lint/format. The local Supabase pgTAP quota test and native Android device verification remain to be run by maintainers before enabling this optional feature. It is off by default.
 
 Files: screenshot.png, demo.gif and demo.mp4. Backend fixtures: api/supabase/functions/qr-site-notes/test_fixtures.ts. Handler tests: api/supabase/functions/qr-site-notes/handler_test.ts. Flutter build defines for a local preview are SUPABASE_URL=http://127.0.0.1:4605, SUPABASE_ANON_KEY=local-demo-anon-not-a-secret and QR_SITE_NOTES_ENABLED=true. Never use a production project for the fake-provider demo.
