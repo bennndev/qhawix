@@ -5,8 +5,11 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../domain/models/qr_reputation_result.dart';
 import '../domain/models/qr_scan_payload.dart';
+import '../domain/models/qr_site_note.dart';
 import '../domain/models/qr_url_assessment.dart';
 import '../viewmodel/qr_shield_view_model.dart';
+import '../viewmodel/qr_site_note_view_model.dart';
+import 'qr_site_note_card.dart';
 
 class QrReviewScreen extends StatelessWidget {
   const QrReviewScreen({super.key});
@@ -111,6 +114,8 @@ class _UrlReviewState extends State<_UrlReview> {
     final assessment = review.urlAssessment!;
     final reputation = review.reputation;
     final isKnownThreat = reputation?.status == QrReputationStatus.knownThreat;
+    final siteNotes = context.watch<QrSiteNoteViewModel?>();
+    final noteHost = qrSiteNoteHostKey(assessment.asciiHost);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -245,6 +250,11 @@ class _UrlReviewState extends State<_UrlReview> {
                 reputation != null &&
                 reputation.providerState != QrProviderState.notRequested,
           ),
+        // Personal context only, below every safety decision on purpose.
+        if (siteNotes != null && siteNotes.isAvailable && noteHost != null) ...[
+          const SizedBox(height: 12),
+          QrSiteNoteCard(viewModel: siteNotes, hostKey: noteHost),
+        ],
         const SizedBox(height: 8),
         const Text(
           'El estado de reputación no confirma que el QR pertenezca al negocio '

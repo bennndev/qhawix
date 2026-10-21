@@ -1,6 +1,7 @@
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
+import 'data/repositories/supabase_qr_site_note_repository.dart';
 import 'data/repositories/web_risk_qr_reputation_repository.dart';
 import 'data/services/android_qr_image_decoder.dart';
 import 'data/services/android_qr_security_history_repository.dart';
@@ -11,10 +12,12 @@ import 'domain/repositories/qr_clock.dart';
 import 'domain/repositories/qr_image_decoder.dart';
 import 'domain/repositories/qr_reputation_repository.dart';
 import 'domain/repositories/qr_security_history_repository.dart';
+import 'domain/repositories/qr_site_note_repository.dart';
 import 'domain/services/qr_reputation_policy.dart';
 import 'domain/services/qr_url_inspector.dart';
 import 'domain/use_cases/inspect_qr_payload.dart';
 import 'viewmodel/qr_shield_view_model.dart';
+import 'viewmodel/qr_site_note_view_model.dart';
 
 /// Dependencies used by the QR Shield screen inside the existing app shell.
 List<SingleChildWidget> qrShieldProviders() => [
@@ -45,5 +48,10 @@ List<SingleChildWidget> qrShieldProviders() => [
       reputationPolicy: context.read<QrReputationPolicy>(),
       securityHistoryRepository: context.read<QrSecurityHistoryRepository>(),
     ),
+  ),
+  Provider<QrSiteNoteRepository>(create: (_) => SupabaseQrSiteNoteRepository()),
+  ChangeNotifierProvider<QrSiteNoteViewModel>(
+    create: (context) =>
+        QrSiteNoteViewModel(repository: context.read<QrSiteNoteRepository>()),
   ),
 ];
