@@ -418,3 +418,9 @@ enabled = true
 # The mobile app is a public client. The function applies durable database quotas
 # and validates every request; the Supabase anon key is only an API identifier.
 verify_jwt = false
+
+[functions.qr-site-notes]
+# Personal Escudo QR notes stored in Atomic Memory. Requires a signed-in
+# session; the function also resolves the user through Auth and derives the
+# memory subject on the server.
+verify_jwt = true
