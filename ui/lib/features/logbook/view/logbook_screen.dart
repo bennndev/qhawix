@@ -38,7 +38,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
         SnackBar(
           content: Text(
             updated
-                ? 'El enlace se permitirá en próximos escaneos.'
+                ? 'Preferencia guardada. El enlace requerirá una nueva verificación y tu confirmación.'
                 : 'No se pudo actualizar este registro.',
           ),
         ),
@@ -96,7 +96,7 @@ class _LogbookScreenState extends State<LogbookScreen> {
                   const Padding(
                     padding: EdgeInsets.only(bottom: 12),
                     child: Text(
-                      'Historial de enlaces bloqueados. Al permitir uno, los próximos escaneos de esa URL omitirán Web Risk y la abrirán automáticamente.',
+                      'Historial de enlaces bloqueados. Los enlaces guardados como permitidos también requieren una nueva verificación y tu confirmación antes de abrirse.',
                     ),
                   ),
                   for (final incident in incidents)
@@ -140,6 +140,13 @@ class _IncidentCard extends StatelessWidget {
             SelectableText(incident.blockedUrl),
             const SizedBox(height: 4),
             Text('Fecha y hora: $timestamp'),
+            Text(switch (incident.detectionSource) {
+              QrSecurityDetectionSource.urlscan => 'Fuente: urlscan.io',
+              QrSecurityDetectionSource.legacyReputation =>
+                'Fuente: proveedor anterior',
+              QrSecurityDetectionSource.localPolicy =>
+                'Fuente: validación local',
+            }),
             if (incident.isAllowed) ...[
               const SizedBox(height: 8),
               const Chip(
@@ -164,12 +171,16 @@ class _IncidentCard extends StatelessWidget {
 
   String _categoryLabel(String categories) => categories
       .split(',')
-      .map((category) => switch (category.trim()) {
-        'MALWARE' => 'Malware',
-        'SOCIAL_ENGINEERING' => 'Phishing / Ingeniería social',
-        'UNWANTED_SOFTWARE' => 'Software no deseado',
-        'LOCAL_POLICY' => 'Bloqueo por política local',
-        final category => category,
-      })
+      .map(
+        (category) => switch (category.trim()) {
+          'URLSCAN_MALICIOUS' => 'Contenido malicioso señalado por urlscan',
+          'URLSCAN_PHISHING' => 'Phishing señalado por urlscan',
+          'MALWARE' => 'Malware',
+          'SOCIAL_ENGINEERING' => 'Phishing / Ingeniería social',
+          'UNWANTED_SOFTWARE' => 'Software no deseado',
+          'LOCAL_POLICY' => 'Bloqueo por política local',
+          final category => category,
+        },
+      )
       .join(', ');
 }

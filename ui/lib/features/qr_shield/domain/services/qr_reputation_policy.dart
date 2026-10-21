@@ -1,3 +1,4 @@
+import '../config/qr_reputation_config.dart';
 import '../models/qr_reputation_result.dart';
 import '../models/qr_url_assessment.dart';
 
@@ -12,7 +13,8 @@ enum QrOpenPolicyDecision {
 class QrReputationPolicy {
   const QrReputationPolicy();
 
-  static const Duration negativeResultMaxAge = Duration(seconds: 60);
+  static const Duration negativeResultMaxAge =
+      QrReputationConfig.negativeResultMaxAge;
 
   QrReputationResult applyProviderResponse(
     QrReputationResult result, {

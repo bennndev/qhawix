@@ -42,7 +42,7 @@ Como una suite de oficina, cada módulo funciona solo y se potencia con los dem�
 - Captura por cámara bajo demanda, por imagen elegida o por URL pegada. `[Real]`
 - Clasificación: URL, texto, vCard, calendario, Wi-Fi, teléfono, SMS, correo, pago. Nada se ejecuta solo. `[Real]`
 - Validación local de URL (homógrafos, acortadores, IP privada, esquemas peligrosos). `[Real]`
-- Tres resultados: coincidencia conocida, sin coincidencia con cobertura completa, **no verificable**. `[Requisito]` (cuenta de Web Risk)
+- Tres resultados: amenaza señalada por urlscan.io, análisis sin señales con cobertura del proveedor, **no verificable**. `[Requisito]` (cuenta y cuota de escaneos privados de urlscan.io)
 - Apertura en navegador externo solo tras un toque explícito y revalidando la URL. `[Real]`
 
 ### 3. EchoTrap: estafas telefónicas con IA
@@ -198,7 +198,7 @@ flutter run --dart-define-from-file=env/local.json
 
 `ui/env/local.json` está ignorado por Git. La clave anónima de Supabase es pública por diseño; las claves de proveedores nunca van en la app ni en el repositorio.
 
-Para configurar la reputación real de Escudo QR con Web Risk Lookup, sigue [la guía de configuración](docs/QR-WEB-RISK-SETUP.md). La clave de Google se guarda como secreto de la Edge Function; nunca se añade a `ui/env/local.json`.
+Para configurar el análisis real de Escudo QR con urlscan.io, sigue [la decisión y guía de configuración](odd/tasks/qr-shield-urlscan.md). `URLSCAN_API_KEY` se guarda en `api/supabase/functions/.env` para desarrollo y como secreto de la Edge Function desplegada; nunca se añade a `ui/env/local.json`. Los escaneos se envían con visibilidad privada y requieren consentimiento. La app espera el resultado y solo permite abrir un enlace tras un toque y confirmación explícitos.
 
 > Verificado sobre el esqueleto: `dart analyze`, `flutter test` y la versión del CLI de Supabase. `supabase start` y `functions serve` no se probaron.
 

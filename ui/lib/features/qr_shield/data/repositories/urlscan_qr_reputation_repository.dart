@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import '../../domain/config/qr_reputation_config.dart';
 import '../../domain/models/qr_reputation_result.dart';
 import '../../domain/repositories/qr_reputation_repository.dart';
 
-class WebRiskQrReputationRepository implements QrReputationRepository {
-  WebRiskQrReputationRepository({
+class UrlscanQrReputationRepository implements QrReputationRepository {
+  UrlscanQrReputationRepository({
     String supabaseUrl = _defaultSupabaseUrl,
     String supabaseAnonKey = _defaultSupabaseAnonKey,
     HttpClient? httpClient,
@@ -23,17 +24,17 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
   static const String _defaultSupabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
   );
-  static const String _provider = 'Google Web Risk Lookup';
-  static const String _providerId = 'google_web_risk_lookup';
-  static const String _consentVersion = 'qr-reputation-consent-v1';
+  static const String _provider = 'urlscan.io';
+  static const String _providerId = 'urlscan_v1';
+  static const String _consentVersion = 'qr-urlscan-private-consent-v2';
   static const int _maxUrlBytes = 8 * 1024;
   static const int _maxResponseBytes = 16 * 1024;
-  static const Duration _requestTimeout = Duration(seconds: 7);
-  static const List<String> _expectedCategories = [
-    'MALWARE',
-    'SOCIAL_ENGINEERING',
-    'UNWANTED_SOFTWARE',
-  ];
+  static const Duration _requestTimeout = QrReputationConfig.gatewayTimeout;
+  static const List<String> _expectedScope = ['URLSCAN_VERDICT'];
+  static const Set<String> _allowedMatches = {
+    'URLSCAN_MALICIOUS',
+    'URLSCAN_PHISHING',
+  };
 
   final String _supabaseUrl;
   final String _supabaseAnonKey;
@@ -61,7 +62,10 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
   @override
   String? get privacyDisclosure => isConfigured
       ? 'La URL completa, incluidos ruta y parámetros y sin el fragmento, pasa '
-            'por Supabase para consultarse con Google Web Risk. Si se bloquea '
+            'por Supabase a urlscan.io, que visitará el destino en un navegador '
+            'remoto para analizarlo. El escaneo será privado y accesible para '
+            'la cuenta de QHAWIX y el proveedor. Si no hay cuota privada, no '
+            'se hará un escaneo público. El análisis puede tardar varios segundos. Si se bloquea '
             'por una política local o una coincidencia de riesgo, QHAWIX guarda '
             'en este dispositivo la fecha, el destino saneado (sin credenciales, '
             'parámetros ni fragmento; las rutas sensibles se ocultan) y la '
@@ -115,7 +119,7 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
       request.add(
         utf8.encode(
           jsonEncode({
-            'schemaVersion': 1,
+            'schemaVersion': QrReputationConfig.version,
             'requestId': requestId,
             'inputRevision': inputRevision,
             'url': urlText,
@@ -171,12 +175,13 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
     String requestId,
     int inputRevision,
   ) {
-    if (body['schemaVersion'] != 1 ||
+    if (body['schemaVersion'] != QrReputationConfig.version ||
         body['requestId'] != requestId ||
         body['inputRevision'] != inputRevision ||
         body['provider'] != _providerId ||
         body['isFixture'] != false ||
         body['redirectResolution'] != 'not_performed' ||
+        !body.containsKey('reviewExpiresAt') ||
         body['coverageComplete'] != true ||
         body['servedFromCache'] is! bool) {
       return _unverified(
@@ -203,8 +208,8 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
 
     final checked = checkedCategories.cast<String>();
     final matches = matchingCategories.cast<String>();
-    if (!_sameCategorySet(checked, _expectedCategories) ||
-        matches.any((category) => !_expectedCategories.contains(category)) ||
+    if (!_sameCategorySet(checked, _expectedScope) ||
+        matches.any((category) => !_allowedMatches.contains(category)) ||
         matches.toSet().length != matches.length) {
       return _unverified(
         'invalid_provider_response',
@@ -213,8 +218,8 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
     }
 
     final verdict = body['providerVerdict'];
-    final providerExpiresAt = body['providerExpiresAt'];
-    if (verdict == 'no_match' && matches.isEmpty && providerExpiresAt == null) {
+    final reviewExpiresAt = body['reviewExpiresAt'];
+    if (verdict == 'no_match' && matches.isEmpty && reviewExpiresAt == null) {
       return QrReputationResult(
         status: QrReputationStatus.noKnownThreats,
         reasonCode: null,
@@ -228,11 +233,13 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
       );
     }
 
-    if (verdict == 'match' &&
-        matches.isNotEmpty &&
-        providerExpiresAt is String) {
-      final expiresAt = DateTime.tryParse(providerExpiresAt);
-      if (expiresAt == null || !expiresAt.isAfter(checkedAt)) {
+    if (verdict == 'match' && matches.isNotEmpty && reviewExpiresAt is String) {
+      final expiresAt = DateTime.tryParse(reviewExpiresAt);
+      if (expiresAt == null ||
+          !expiresAt.isAfter(checkedAt) ||
+          expiresAt.isAfter(
+            checkedAt.add(QrReputationConfig.matchReviewMaxAge),
+          )) {
         return _unverified(
           'invalid_provider_response',
           QrProviderState.invalidResponse,
@@ -275,9 +282,26 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
     if (statusCode == HttpStatus.tooManyRequests) {
       return _unverified(code, QrProviderState.quotaExceeded);
     }
+    if (const {
+      'scan_incomplete',
+      'scan_inconclusive',
+      'analysis_expired',
+      'scan_deleted',
+    }.contains(code)) {
+      return _unverified(code, QrProviderState.available);
+    }
+    if (code == 'private_scan_unavailable') {
+      return _unverified(code, QrProviderState.failed);
+    }
+    if (code == 'provider_auth_failed') {
+      return _unverified(code, QrProviderState.notConfigured);
+    }
     if (statusCode == HttpStatus.serviceUnavailable &&
         code == 'not_configured') {
-      return _unverified(code, QrProviderState.notConfigured);
+      return _unverified(
+        'provider_not_configured',
+        QrProviderState.notConfigured,
+      );
     }
     if (statusCode == HttpStatus.serviceUnavailable) {
       return _unverified(code, QrProviderState.offline);
@@ -304,9 +328,9 @@ class WebRiskQrReputationRepository implements QrReputationRepository {
       left.toSet().containsAll(right);
 
   String _categoryLabel(String category) => switch (category) {
-    'MALWARE' => 'Malware',
-    'SOCIAL_ENGINEERING' => 'Ingeniería social',
-    'UNWANTED_SOFTWARE' => 'Software no deseado',
+    'URLSCAN_VERDICT' => 'Análisis de urlscan',
+    'URLSCAN_MALICIOUS' => 'Contenido malicioso señalado por urlscan',
+    'URLSCAN_PHISHING' => 'Phishing señalado por urlscan',
     _ => category,
   };
 

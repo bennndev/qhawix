@@ -7,12 +7,14 @@ import 'package:qhawix/features/qr_shield/domain/repositories/external_browser.d
 import 'package:qhawix/features/qr_shield/domain/repositories/qr_clock.dart';
 import 'package:qhawix/features/qr_shield/domain/repositories/qr_image_decoder.dart';
 import 'package:qhawix/features/qr_shield/domain/repositories/qr_reputation_repository.dart';
+import 'package:qhawix/features/qr_shield/domain/repositories/qr_security_history_query_repository.dart';
+import 'package:qhawix/features/qr_shield/domain/models/qr_security_incident.dart';
 import 'package:qhawix/features/qr_shield/domain/services/qr_reputation_policy.dart';
 import 'package:qhawix/features/qr_shield/domain/services/qr_url_inspector.dart';
 import 'package:qhawix/features/qr_shield/domain/use_cases/inspect_qr_payload.dart';
 import 'package:qhawix/features/qr_shield/viewmodel/qr_shield_view_model.dart';
 
-const _webRiskProviderName = 'Google Web Risk Lookup';
+const _urlscanProviderName = 'urlscan.io';
 
 void main() {
   final now = DateTime.utc(2026, 10, 17, 12);
@@ -39,6 +41,75 @@ void main() {
   });
 
   tearDown(() => viewModel.dispose());
+
+  test(
+    'repeated verification taps share one pending provider command',
+    () async {
+      reputationRepository.isConfigured = true;
+      final pending = Completer<QrReputationResult>();
+      reputationRepository.responseFuture = pending.future;
+      viewModel.inspect('https://example.com/');
+      final revision = viewModel.review!.revision;
+      final first = viewModel.checkReputation(
+        userConsented: true,
+        expectedRevision: revision,
+      );
+      await viewModel.checkReputation(
+        userConsented: true,
+        expectedRevision: revision,
+      );
+      expect(reputationRepository.callCount, 1);
+      pending.complete(_noMatch(now));
+      await first;
+      expect(externalBrowser.openedUrls, isEmpty);
+    },
+  );
+
+  test(
+    'a saved allow preference never opens automatically or bypasses a new threat',
+    () async {
+      viewModel.dispose();
+      reputationRepository.isConfigured = true;
+      reputationRepository.response = QrReputationResult(
+        status: QrReputationStatus.knownThreat,
+        reasonCode: null,
+        provider: 'urlscan.io',
+        checkedAt: now,
+        expiresAt: now.add(const Duration(minutes: 5)),
+        coverageComplete: true,
+        categories: const ['Phishing señalado por urlscan'],
+        checkedCategories: const ['Análisis de urlscan'],
+        providerState: QrProviderState.available,
+      );
+      viewModel = QrShieldViewModel(
+        inspectPayload: InspectQrPayload(urlInspector: QrUrlInspector()),
+        reputationRepository: reputationRepository,
+        externalBrowser: externalBrowser,
+        clock: clock,
+        imageDecoder: imageDecoder,
+        reputationPolicy: const QrReputationPolicy(),
+        securityHistoryQueryRepository: _AllowedHistoryRepository(),
+      );
+      viewModel.inspect('https://example.com/');
+      await Future<void>.delayed(Duration.zero);
+      expect(viewModel.review!.isAllowlisted, isTrue);
+      expect(viewModel.canOpenCurrentReview, isFalse);
+      expect(externalBrowser.openedUrls, isEmpty);
+      await viewModel.checkReputation(
+        userConsented: true,
+        expectedRevision: viewModel.review!.revision,
+      );
+      expect(reputationRepository.callCount, 1);
+      expect(
+        await viewModel.openExternally(
+          userConfirmed: true,
+          expectedRevision: viewModel.review!.revision,
+        ),
+        QrOpenResult.blockedByKnownThreat,
+      );
+      expect(externalBrowser.openedUrls, isEmpty);
+    },
+  );
 
   test(
     'inspection neither requests reputation nor opens a link automatically',
@@ -116,7 +187,7 @@ void main() {
       viewModel.inspect('https://shop.example.org/menu#local-token');
       final revision = viewModel.review!.revision;
 
-      expect(viewModel.reputationProviderName, _webRiskProviderName);
+      expect(viewModel.reputationProviderName, _urlscanProviderName);
       expect(viewModel.reputationPrivacyDisclosure, isNotNull);
 
       await viewModel.checkReputation(
@@ -242,13 +313,63 @@ void main() {
   );
 
   test(
+    'a simulated clean result can open only after explicit confirmation',
+    () async {
+      reputationRepository.isConfigured = true;
+      reputationRepository.response = QrReputationResult(
+        status: QrReputationStatus.noKnownThreats,
+        reasonCode: 'demo_safe_fixture',
+        provider: 'Simulación local (solo depuración)',
+        checkedAt: now,
+        expiresAt: null,
+        coverageComplete: true,
+        categories: const [],
+        checkedCategories: const [
+          'MALWARE',
+          'SOCIAL_ENGINEERING',
+          'UNWANTED_SOFTWARE',
+        ],
+        providerState: QrProviderState.available,
+        isSimulation: true,
+      );
+      viewModel.inspect('https://example.com');
+
+      await viewModel.checkReputation(
+        userConsented: true,
+        expectedRevision: viewModel.review!.revision,
+      );
+
+      expect(externalBrowser.openedUrls, isEmpty);
+      expect(viewModel.canOpenCurrentReview, isTrue);
+      expect(
+        await viewModel.openExternally(
+          userConfirmed: false,
+          expectedRevision: viewModel.review!.revision,
+        ),
+        QrOpenResult.confirmationRequired,
+      );
+      expect(
+        await viewModel.openExternally(
+          userConfirmed: true,
+          expectedRevision: viewModel.review!.revision,
+        ),
+        QrOpenResult.opened,
+      );
+      expect(
+        externalBrowser.openedUrls.single.toString(),
+        'https://example.com',
+      );
+    },
+  );
+
+  test(
     'a current known-threat result is blocked from external opening',
     () async {
       reputationRepository.isConfigured = true;
       reputationRepository.response = QrReputationResult(
         status: QrReputationStatus.knownThreat,
         reasonCode: null,
-        provider: _webRiskProviderName,
+        provider: _urlscanProviderName,
         checkedAt: now,
         expiresAt: now.add(const Duration(minutes: 5)),
         coverageComplete: true,
@@ -268,6 +389,44 @@ void main() {
       );
 
       expect(result, QrOpenResult.blockedByKnownThreat);
+      expect(externalBrowser.openedUrls, isEmpty);
+    },
+  );
+
+  test(
+    'a simulated phishing result stays blocked from external opening',
+    () async {
+      reputationRepository.isConfigured = true;
+      reputationRepository.response = QrReputationResult(
+        status: QrReputationStatus.knownThreat,
+        reasonCode: 'demo_phishing_fixture',
+        provider: 'Simulación local (solo depuración)',
+        checkedAt: now,
+        expiresAt: now.add(const Duration(minutes: 1)),
+        coverageComplete: false,
+        categories: const ['Ingeniería social'],
+        checkedCategories: const [
+          'MALWARE',
+          'SOCIAL_ENGINEERING',
+          'UNWANTED_SOFTWARE',
+        ],
+        providerState: QrProviderState.available,
+        isSimulation: true,
+      );
+      viewModel.inspect('https://testsafebrowsing.appspot.com/s/phishing.html');
+      await viewModel.checkReputation(
+        userConsented: true,
+        expectedRevision: viewModel.review!.revision,
+      );
+
+      expect(viewModel.canOpenCurrentReview, isFalse);
+      expect(
+        await viewModel.openExternally(
+          userConfirmed: true,
+          expectedRevision: viewModel.review!.revision,
+        ),
+        QrOpenResult.blockedByKnownThreat,
+      );
       expect(externalBrowser.openedUrls, isEmpty);
     },
   );
@@ -330,7 +489,7 @@ void main() {
 QrReputationResult _noMatch(DateTime checkedAt) => QrReputationResult(
   status: QrReputationStatus.noKnownThreats,
   reasonCode: null,
-  provider: _webRiskProviderName,
+  provider: _urlscanProviderName,
   checkedAt: checkedAt,
   expiresAt: null,
   coverageComplete: true,
@@ -352,11 +511,11 @@ class _FakeReputationRepository implements QrReputationRepository {
   int? lastInputRevision;
 
   @override
-  String? get providerName => isConfigured ? _webRiskProviderName : null;
+  String? get providerName => isConfigured ? _urlscanProviderName : null;
 
   @override
   String? get privacyDisclosure => isConfigured
-      ? 'La URL se envía a Google Web Risk después del consentimiento.'
+      ? 'La URL se envía a urlscan.io después del consentimiento.'
       : null;
 
   @override
@@ -402,4 +561,13 @@ class _FakeQrImageDecoder implements QrImageDecoder {
 
   @override
   Future<QrImageScanResult> decodePickedImage() async => result;
+}
+
+class _AllowedHistoryRepository implements QrSecurityHistoryQueryRepository {
+  @override
+  Future<bool> isUrlAllowed(Uri url) async => true;
+  @override
+  Future<List<QrSecurityIncident>> loadIncidents() async => const [];
+  @override
+  Future<bool> allowIncident(int id) async => false;
 }

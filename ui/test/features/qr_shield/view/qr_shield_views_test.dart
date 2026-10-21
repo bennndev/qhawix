@@ -70,9 +70,13 @@ void main() {
     tester,
   ) async {
     await pumpHome(tester);
-    expect(find.byKey(const Key('qr-payload-input')), findsOneWidget);
     expect(find.byKey(const Key('open-scanner')), findsOneWidget);
     expect(find.byKey(const Key('activate-camera')), findsNothing);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('qr-payload-input')),
+      250,
+    );
+    expect(find.byKey(const Key('qr-payload-input')), findsOneWidget);
   });
 
   testWidgets('candidate list shows only the redacted URL preview', (
@@ -127,7 +131,7 @@ void main() {
     (tester) async {
       reputationRepository
         ..isConfigured = true
-        ..providerName = 'Google Web Risk Lookup'
+        ..providerName = 'urlscan.io'
         ..privacyDisclosure = 'La URL se enviará para revisar su reputación.'
         ..response = _cleanResult();
       viewModel.inspect('https://shop.example.org/menu');
@@ -156,17 +160,70 @@ void main() {
     },
   );
 
+  testWidgets(
+    'simulated safe demo shows the open action and requires confirmation',
+    (tester) async {
+      reputationRepository
+        ..isConfigured = true
+        ..providerName = 'Simulación local (solo depuración)'
+        ..privacyDisclosure = 'Resultado de demostración, sin consulta externa.'
+        ..response = QrReputationResult(
+          status: QrReputationStatus.noKnownThreats,
+          reasonCode: 'demo_safe_fixture',
+          provider: 'Simulación local (solo depuración)',
+          checkedAt: DateTime.utc(2026, 10, 17),
+          expiresAt: null,
+          coverageComplete: true,
+          categories: const [],
+          checkedCategories: const [
+            'MALWARE',
+            'SOCIAL_ENGINEERING',
+            'UNWANTED_SOFTWARE',
+          ],
+          providerState: QrProviderState.available,
+          isSimulation: true,
+        );
+      viewModel.inspect('https://example.com');
+      await pumpReview(tester);
+
+      await tester.tap(find.byKey(const Key('check-url-reputation')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Autorizar consulta'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('open-external-url')), findsOneWidget);
+      expect(externalBrowser.openedUrls, isEmpty);
+      await tester.drag(find.byType(ListView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('open-external-url')));
+      await tester.tap(find.byKey(const Key('open-external-url')));
+      await tester.pumpAndSettle();
+      expect(find.text('Antes de abrir'), findsOneWidget);
+      expect(externalBrowser.openedUrls, isEmpty);
+
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        externalBrowser.openedUrls.single.toString(),
+        'https://example.com',
+      );
+      viewModel.clearReview();
+      await tester.pumpAndSettle();
+    },
+  );
+
   testWidgets('alerts and blocks when reputation reports a known threat', (
     tester,
   ) async {
     reputationRepository
       ..isConfigured = true
-      ..providerName = 'Google Web Risk Lookup'
+      ..providerName = 'urlscan.io'
       ..privacyDisclosure = 'La URL se enviará para revisar su reputación.'
       ..response = QrReputationResult(
         status: QrReputationStatus.knownThreat,
         reasonCode: null,
-        provider: 'Google Web Risk Lookup',
+        provider: 'urlscan.io',
         checkedAt: DateTime.utc(2026, 10, 17),
         expiresAt: DateTime.utc(2026, 10, 17, 0, 5),
         coverageComplete: true,
@@ -197,12 +254,37 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('private scan denial explains why the URL remains unverifiable', (
+    tester,
+  ) async {
+    reputationRepository
+      ..isConfigured = true
+      ..providerName = 'urlscan.io'
+      ..response = QrReputationResult.suspiciousOrUnverified(
+        'private_scan_unavailable',
+        provider: 'urlscan.io',
+        providerState: QrProviderState.failed,
+      );
+    viewModel.inspect('https://example.com/');
+    await viewModel.checkReputation(
+      userConsented: true,
+      expectedRevision: viewModel.review!.revision,
+    );
+    await pumpReview(tester);
+    expect(
+      find.textContaining('no permitió el análisis privado'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('open-external-url')), findsNothing);
+    expect(externalBrowser.openedUrls, isEmpty);
+  });
+
   testWidgets('does not apply an open confirmation to a replaced QR', (
     tester,
   ) async {
     reputationRepository
       ..isConfigured = true
-      ..providerName = 'Google Web Risk Lookup'
+      ..providerName = 'urlscan.io'
       ..privacyDisclosure = 'La URL se enviará para revisar su reputación.'
       ..response = _cleanResult();
     viewModel.inspect('https://first.example.org/menu');
@@ -258,7 +340,7 @@ class _FakeReputationRepository implements QrReputationRepository {
 QrReputationResult _cleanResult() => QrReputationResult(
   status: QrReputationStatus.noKnownThreats,
   reasonCode: null,
-  provider: 'Google Web Risk Lookup',
+  provider: 'urlscan.io',
   checkedAt: DateTime.utc(2026, 10, 17),
   expiresAt: null,
   coverageComplete: true,

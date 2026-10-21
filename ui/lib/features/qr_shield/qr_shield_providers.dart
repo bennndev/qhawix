@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
-import 'data/repositories/demo_qr_reputation_repository.dart';
-import 'data/repositories/web_risk_qr_reputation_repository.dart';
+import 'data/repositories/urlscan_qr_reputation_repository.dart';
 import 'data/services/android_qr_image_decoder.dart';
 import 'data/services/android_qr_security_history_repository.dart';
 import 'data/services/system_qr_clock.dart';
@@ -31,19 +29,9 @@ List<SingleChildWidget> qrShieldProviders() => [
   ),
   Provider<QrUrlInspector>(create: (_) => QrUrlInspector()),
   Provider<QrReputationRepository>(
-    create: (context) {
-      final webRiskRepository = WebRiskQrReputationRepository();
-      return kDebugMode
-          ? DemoQrReputationRepository(
-              fallback: webRiskRepository,
-              clock: context.read<QrClock>(),
-            )
-          : webRiskRepository;
-    },
+    create: (_) => UrlscanQrReputationRepository(),
     dispose: (_, repository) {
-      if (repository is DemoQrReputationRepository) {
-        repository.close();
-      } else if (repository is WebRiskQrReputationRepository) {
+      if (repository is UrlscanQrReputationRepository) {
         repository.close();
       }
     },

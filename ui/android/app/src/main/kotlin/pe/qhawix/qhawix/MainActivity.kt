@@ -70,6 +70,8 @@ class MainActivity : FlutterActivity() {
         val source = call.argument<String>("detection_source")
         val categories = category?.split(',')?.map(String::trim).orEmpty()
         val validCategories = setOf(
+            "URLSCAN_MALICIOUS",
+            "URLSCAN_PHISHING",
             "MALWARE",
             "SOCIAL_ENGINEERING",
             "UNWANTED_SOFTWARE",
@@ -84,7 +86,7 @@ class MainActivity : FlutterActivity() {
             lookupUrl == null || !isValidLookupUrl(lookupUrl) ||
             category == null || categories.isEmpty() ||
             categories.any { it !in validCategories } ||
-            source == null || source !in setOf("localPolicy", "googleWebRisk")
+            source == null || source !in setOf("localPolicy", "urlscan")
         ) {
             result.error("invalid_incident", "The blocked QR incident is invalid.", null)
             return

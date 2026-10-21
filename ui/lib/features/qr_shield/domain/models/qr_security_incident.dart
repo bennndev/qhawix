@@ -1,4 +1,4 @@
-enum QrSecurityDetectionSource { localPolicy, googleWebRisk }
+enum QrSecurityDetectionSource { localPolicy, urlscan, legacyReputation }
 
 class QrSecurityIncident {
   const QrSecurityIncident({
@@ -21,7 +21,7 @@ class QrSecurityIncident {
 
   bool get canBeAllowed =>
       id != null &&
-      detectionSource == QrSecurityDetectionSource.googleWebRisk &&
+      detectionSource != QrSecurityDetectionSource.localPolicy &&
       hasAllowlistFingerprint &&
       !isAllowed;
 }

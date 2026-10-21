@@ -117,17 +117,15 @@ class _UrlReviewState extends State<_UrlReview> {
       children: [
         if (review.isCheckingAllowlist)
           const _AllowlistCheckingCard()
-        else if (review.isAllowlisted)
-          const _AllowedByUserCard()
         else
           _VerdictCard(
             reputation: reputation,
             reviewExpiresAt: review.reputationReviewExpiresAt,
             checking: review.isCheckingReputation,
           ),
-        if (review.wasAutomaticallyOpened) ...[
+        if (review.isAllowlisted) ...[
           const SizedBox(height: 12),
-          const _AutomaticallyOpenedCard(),
+          const _AllowedByUserCard(),
         ],
         const SizedBox(height: 16),
         Card(
@@ -214,8 +212,7 @@ class _UrlReviewState extends State<_UrlReview> {
             ),
           ),
         ],
-        if (!review.isAllowlisted &&
-            context.read<QrShieldViewModel>().canRequestReputation &&
+        if (context.read<QrShieldViewModel>().canRequestReputation &&
             assessment.isEligibleForReputation) ...[
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -232,9 +229,7 @@ class _UrlReviewState extends State<_UrlReview> {
         ],
         if (widget.canOpenExternally &&
             !isKnownThreat &&
-            !isSimulation &&
-            assessment.canOpenExternally &&
-            !review.wasAutomaticallyOpened) ...[
+            assessment.canOpenExternally) ...[
           const SizedBox(height: 12),
           FilledButton.icon(
             key: const Key('open-external-url'),
@@ -251,7 +246,6 @@ class _UrlReviewState extends State<_UrlReview> {
           _KnownThreatBlockedCard(isSimulation: isSimulation),
         if (!widget.canOpenExternally &&
             !isKnownThreat &&
-            !isSimulation &&
             !review.isCheckingReputation &&
             !review.isCheckingAllowlist)
           const _UnverifiedBlockedCard(),
@@ -293,7 +287,7 @@ class _UrlReviewState extends State<_UrlReview> {
           ),
           content: Text(
             reputation.isSimulation
-                ? 'Resultado predefinido localmente para la prueba. No se consultó Google Web Risk, no se abrirá el enlace y no se guardará como incidente.'
+                ? 'Resultado predefinido localmente para la prueba. No se consultó urlscan.io, no se abrirá el enlace y no se guardará como incidente.'
                 : categories.isEmpty
                 ? 'La fuente de reputación reportó este destino como una amenaza. Escudo QR bloqueó su apertura.'
                 : 'La fuente de reputación reportó este destino como una amenaza (${categories.join(', ')}). Escudo QR bloqueó su apertura.',
@@ -416,8 +410,8 @@ class _UrlReviewState extends State<_UrlReview> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Si la respuesta es completa y no hay señales locales, el '
-                'enlace se abrirá automáticamente en el navegador externo.',
+                'El análisis no abrirá el enlace. Si hay un resultado vigente '
+                'sin señales, podrás tocar Abrir y confirmar para continuar.',
               ),
               const SizedBox(height: 8),
               const Text('¿Autorizas esta consulta?'),
@@ -480,27 +474,9 @@ class _AllowedByUserCard extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Permitido por ti desde el historial. Web Risk se omitió para esta URL exacta.',
+              'Guardaste este enlace en el historial como permitido. Debe verificarse de nuevo y confirmar su apertura.',
             ),
           ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _AutomaticallyOpenedCard extends StatelessWidget {
-  const _AutomaticallyOpenedCard();
-
-  @override
-  Widget build(BuildContext context) => const Card(
-    child: Padding(
-      padding: EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Icon(Icons.open_in_browser),
-          SizedBox(width: 12),
-          Expanded(child: Text('El enlace se abrió en el navegador externo.')),
         ],
       ),
     ),
@@ -540,9 +516,16 @@ class _VerdictCard extends StatelessWidget {
             null => 'Sospechoso o no verificable',
           };
     final detail = checking
-        ? 'La consulta está en curso.'
+        ? 'urlscan.io está analizando el destino de forma privada. Puede tardar varios segundos.'
         : isSimulation
-        ? 'Resultado local predefinido para la demostración. No se consultó Google Web Risk, no se abrirá el enlace y no se guardará como incidente.'
+        ? switch (status) {
+            QrReputationStatus.knownThreat =>
+              'Resultado local predefinido para la demostración. No se consultó urlscan.io; el enlace permanece bloqueado y no se guardará como incidente.',
+            QrReputationStatus.noKnownThreats =>
+              'Resultado local predefinido para la demostración. No se consultó urlscan.io. Puedes continuar después de confirmar la advertencia; no se guardará como incidente.',
+            QrReputationStatus.suspiciousOrUnverified || null =>
+              'Resultado local de demostración no verificable. No se consultó urlscan.io y el enlace no está habilitado.',
+          }
         : switch (reputationResult?.reasonCode) {
             'provider_not_configured' =>
               'La consulta de reputación en línea no está configurada. Esto no significa que el enlace sea seguro.',
@@ -564,6 +547,16 @@ class _VerdictCard extends StatelessWidget {
               'La respuesta no informó qué categorías revisó; no se interpreta como ausencia de amenazas.',
             'provider_timeout' =>
               'La consulta superó el límite de espera. El enlace no está verificado.',
+            'private_scan_unavailable' =>
+              'urlscan.io no permitió el análisis privado. No se enviará como público y el enlace queda sin verificar.',
+            'scan_incomplete' || 'scan_inconclusive' =>
+              'El análisis no permitió obtener una conclusión suficiente. El enlace sigue sin verificar.',
+            'analysis_expired' || 'scan_deleted' =>
+              'El análisis ya no está disponible o perdió vigencia. Vuelve a comprobar el enlace.',
+            'provider_auth_failed' =>
+              'urlscan.io rechazó la credencial del servicio. El enlace no está verificado.',
+            'quota_exhausted' || 'rate_limited' =>
+              'Se alcanzó el límite de consultas. Inténtalo más tarde; el enlace no está verificado.',
             'offline' =>
               'No hay conexión con el proveedor. El enlace no está verificado.',
             'quota_exceeded' =>
@@ -576,7 +569,7 @@ class _VerdictCard extends StatelessWidget {
               QrReputationStatus.knownThreat =>
                 'La fuente configurada reportó una coincidencia vigente.',
               QrReputationStatus.noKnownThreats =>
-                'La cobertura configurada no reportó coincidencias vigentes. Esto no garantiza seguridad.',
+                'El análisis privado de urlscan no señaló contenido malicioso. Esto no garantiza que el destino sea seguro.',
               _ => 'No se pudo confirmar la reputación del enlace.',
             },
           };
@@ -629,7 +622,7 @@ class _VerdictCard extends StatelessWidget {
                       Text('Consultado: ${checkedAt.toLocal()}'),
                     if (reputationResult?.expiresAt case final expiresAt?)
                       Text(
-                        'Vigencia informada por la fuente hasta: ${expiresAt.toLocal()}',
+                        'Revisión local disponible hasta: ${expiresAt.toLocal()}',
                       ),
                   ],
                   if (status == QrReputationStatus.noKnownThreats &&
@@ -830,7 +823,7 @@ class _KnownThreatBlockedCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     isSimulation
-                        ? 'Resultado local simulado; no se consultó Google Web Risk.'
+                        ? 'Resultado local simulado; no se consultó urlscan.io.'
                         : 'La fuente de reputación reportó este destino. No se abrirá en el navegador.',
                   ),
                 ],
@@ -911,7 +904,7 @@ String _signalLabel(QrUrlSignal signal) => switch (signal) {
 };
 
 String _coverageLabel(QrReputationResult result) {
-  if (result.coverageComplete) return 'completa';
+  if (result.coverageComplete) return 'completa para el análisis solicitado';
   return result.checkedAt == null ? 'no disponible' : 'incompleta';
 }
 

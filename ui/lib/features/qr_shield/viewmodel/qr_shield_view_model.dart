@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/models/qr_image_scan_result.dart';
 import '../domain/models/qr_reputation_result.dart';
+import '../domain/config/qr_reputation_config.dart';
 import '../domain/models/qr_scan_payload.dart';
 import '../domain/models/qr_security_incident.dart';
 import '../domain/models/qr_url_assessment.dart';
@@ -29,11 +30,7 @@ enum QrOpenResult {
   browserUnavailable,
 }
 
-enum QrImageScanAction {
-  cancelled,
-  review,
-  chooseCandidate,
-}
+enum QrImageScanAction { cancelled, review, chooseCandidate }
 
 class QrShieldReview {
   const QrShieldReview({
@@ -44,7 +41,6 @@ class QrShieldReview {
     this.isCheckingReputation = false,
     this.isCheckingAllowlist = false,
     this.isAllowlisted = false,
-    this.wasAutomaticallyOpened = false,
   });
 
   final QrInspection inspection;
@@ -54,7 +50,6 @@ class QrShieldReview {
   final bool isCheckingReputation;
   final bool isCheckingAllowlist;
   final bool isAllowlisted;
-  final bool wasAutomaticallyOpened;
 
   QrScanPayload get payload => inspection.payload;
   QrUrlAssessment? get urlAssessment => inspection.urlAssessment;
@@ -77,14 +72,14 @@ class QrShieldViewModel extends ChangeNotifier {
     required QrReputationPolicy reputationPolicy,
     QrSecurityHistoryRepository? securityHistoryRepository,
     QrSecurityHistoryQueryRepository? securityHistoryQueryRepository,
-  })  : _inspectPayload = inspectPayload,
-        _reputationRepository = reputationRepository,
-        _externalBrowser = externalBrowser,
-        _clock = clock,
-        _imageDecoder = imageDecoder,
-        _reputationPolicy = reputationPolicy,
-        _securityHistoryRepository = securityHistoryRepository,
-        _securityHistoryQueryRepository = securityHistoryQueryRepository;
+  }) : _inspectPayload = inspectPayload,
+       _reputationRepository = reputationRepository,
+       _externalBrowser = externalBrowser,
+       _clock = clock,
+       _imageDecoder = imageDecoder,
+       _reputationPolicy = reputationPolicy,
+       _securityHistoryRepository = securityHistoryRepository,
+       _securityHistoryQueryRepository = securityHistoryQueryRepository;
 
   final InspectQrPayload _inspectPayload;
   final QrReputationRepository _reputationRepository;
@@ -114,7 +109,6 @@ class QrShieldViewModel extends ChangeNotifier {
         assessment == null) {
       return false;
     }
-    if (current.isAllowlisted) return assessment.canOpenExternally;
     final freshAssessment = _inspectPayload
         .inspect(current.payload.rawValue)
         .urlAssessment;
@@ -126,9 +120,11 @@ class QrShieldViewModel extends ChangeNotifier {
         ) ==
         QrOpenPolicyDecision.allowAfterConfirmation;
   }
+
   bool get canRequestReputation => _reputationRepository.isConfigured;
   String? get reputationProviderName => _reputationRepository.providerName;
-  String? get reputationPrivacyDisclosure => _reputationRepository.privacyDisclosure;
+  String? get reputationPrivacyDisclosure =>
+      _reputationRepository.privacyDisclosure;
   bool get isSelectingImage => _isSelectingImage;
   String? get imageScanMessage => _imageScanMessage;
   List<QrCandidateOption> get pendingCandidates => _pendingCandidates;
@@ -174,14 +170,17 @@ class QrShieldViewModel extends ChangeNotifier {
         case QrImageScanStatus.failed:
           _imageScanMessage = switch (result.reasonCode) {
             'image_too_large' => 'La imagen supera el límite de 20 MiB.',
-            'image_scan_unsupported' => 'Este dispositivo no permite leer QR desde imágenes.',
-            _ => 'No se pudo procesar la imagen. Prueba con otra o pega el contenido.',
+            'image_scan_unsupported' =>
+              'Este dispositivo no permite leer QR desde imágenes.',
+            _ =>
+              'No se pudo procesar la imagen. Prueba con otra o pega el contenido.',
           };
           return QrImageScanAction.cancelled;
       }
     } catch (_) {
       if (requestId == _activeRequest) {
-        _imageScanMessage = 'No se pudo procesar la imagen. Prueba con otra o pega el contenido.';
+        _imageScanMessage =
+            'No se pudo procesar la imagen. Prueba con otra o pega el contenido.';
       }
       return QrImageScanAction.cancelled;
     } finally {
@@ -260,16 +259,6 @@ class QrShieldViewModel extends ChangeNotifier {
       isAllowlisted: isAllowed,
     );
     _notifyListenersIfAlive();
-
-    if (isAllowed) {
-      final result = await openExternally(
-        userConfirmed: true,
-        expectedRevision: expectedRevision,
-      );
-      if (result == QrOpenResult.opened) {
-        _markAutomaticallyOpened(expectedRevision);
-      }
-    }
   }
 
   void setCandidates(List<String> rawValues) {
@@ -313,7 +302,6 @@ class QrShieldViewModel extends ChangeNotifier {
         current.revision != expectedRevision ||
         current.isCheckingReputation ||
         current.isCheckingAllowlist ||
-        current.isAllowlisted ||
         assessment == null ||
         !assessment.isEligibleForReputation) {
       return;
@@ -349,7 +337,6 @@ class QrShieldViewModel extends ChangeNotifier {
       reputationReviewExpiresAt: current.reputationReviewExpiresAt,
       isCheckingReputation: true,
       isAllowlisted: current.isAllowlisted,
-      wasAutomaticallyOpened: current.wasAutomaticallyOpened,
     );
     _notifyListenersIfAlive();
 
@@ -369,7 +356,7 @@ class QrShieldViewModel extends ChangeNotifier {
               inputRevision: revisionAtStart,
             )
             .timeout(
-              const Duration(seconds: 8),
+              QrReputationConfig.commandTimeout,
               onTimeout: () => QrReputationResult.suspiciousOrUnverified(
                 'provider_timeout',
                 providerState: QrProviderState.timeout,
@@ -393,11 +380,12 @@ class QrShieldViewModel extends ChangeNotifier {
       assessment: assessment,
       now: _clock.now(),
     );
-    if (result.status == QrReputationStatus.knownThreat) {
+    if (result.status == QrReputationStatus.knownThreat &&
+        !result.isSimulation) {
       await _recordBlockedIncident(
         current,
         category: _storedThreatCategories(result.categories),
-        source: QrSecurityDetectionSource.googleWebRisk,
+        source: QrSecurityDetectionSource.urlscan,
         lookupUri: assessment.parsedUri,
       );
       if (_isDisposed ||
@@ -412,20 +400,9 @@ class QrShieldViewModel extends ChangeNotifier {
       reputation: result,
       reputationReviewExpiresAt: _reputationPolicy.reviewExpiryDeadline(result),
       isAllowlisted: current.isAllowlisted,
-      wasAutomaticallyOpened: current.wasAutomaticallyOpened,
     );
     _scheduleReputationExpiry(current.revision, result);
     _notifyListenersIfAlive();
-
-    if (result.status == QrReputationStatus.noKnownThreats) {
-      final openResult = await openExternally(
-        userConfirmed: true,
-        expectedRevision: revisionAtStart,
-      );
-      if (openResult == QrOpenResult.opened) {
-        _markAutomaticallyOpened(revisionAtStart);
-      }
-    }
   }
 
   Future<QrOpenResult> openExternally({
@@ -437,9 +414,6 @@ class QrShieldViewModel extends ChangeNotifier {
     if (current == null || current.revision != expectedRevision) {
       return QrOpenResult.reviewChanged;
     }
-    if (current.reputation?.isSimulation == true) {
-      return QrOpenResult.localPolicyBlocked;
-    }
     if (current.urlAssessment == null) return QrOpenResult.notAUrl;
     if (!userConfirmed) return QrOpenResult.confirmationRequired;
     if (current.isCheckingReputation || current.isCheckingAllowlist) {
@@ -450,15 +424,6 @@ class QrShieldViewModel extends ChangeNotifier {
     final reputation = current.reputation;
     final freshInspection = _inspectPayload.inspect(current.payload.rawValue);
     final freshAssessment = freshInspection.urlAssessment;
-    if (current.isAllowlisted) {
-      if (!originalAssessment.canOpenExternally ||
-          freshAssessment == null ||
-          !freshAssessment.canOpenExternally ||
-          originalAssessment.originalValue != freshAssessment.originalValue) {
-        return QrOpenResult.localPolicyBlocked;
-      }
-      return _launchExternally(freshAssessment.parsedUri);
-    }
     switch (_reputationPolicy.decideOpening(
       reviewedAssessment: originalAssessment,
       currentAssessment: freshAssessment,
@@ -471,7 +436,9 @@ class QrShieldViewModel extends ChangeNotifier {
             current,
             category: originalAssessment.signals.isEmpty
                 ? 'local_policy'
-                : originalAssessment.signals.map((signal) => signal.name).join(','),
+                : originalAssessment.signals
+                      .map((signal) => signal.name)
+                      .join(','),
             source: QrSecurityDetectionSource.localPolicy,
             lookupUri: originalAssessment.parsedUri,
           ),
@@ -529,6 +496,10 @@ class QrShieldViewModel extends ChangeNotifier {
     final codes = <String>{};
     for (final category in categories) {
       final code = switch (category) {
+        'Phishing señalado por urlscan' ||
+        'URLSCAN_PHISHING' => 'URLSCAN_PHISHING',
+        'Contenido malicioso señalado por urlscan' ||
+        'URLSCAN_MALICIOUS' => 'URLSCAN_MALICIOUS',
         'Malware' || 'MALWARE' => 'MALWARE',
         'Ingeniería social' || 'SOCIAL_ENGINEERING' => 'SOCIAL_ENGINEERING',
         'Software no deseado' || 'UNWANTED_SOFTWARE' => 'UNWANTED_SOFTWARE',
@@ -536,23 +507,7 @@ class QrShieldViewModel extends ChangeNotifier {
       };
       if (code != null) codes.add(code);
     }
-    return codes.join(',');
-  }
-
-  void _markAutomaticallyOpened(int revision) {
-    if (_isDisposed || _review?.revision != revision) return;
-    final current = _review!;
-    _review = QrShieldReview(
-      inspection: current.inspection,
-      revision: current.revision,
-      reputation: current.reputation,
-      reputationReviewExpiresAt: current.reputationReviewExpiresAt,
-      isCheckingReputation: current.isCheckingReputation,
-      isCheckingAllowlist: current.isCheckingAllowlist,
-      isAllowlisted: current.isAllowlisted,
-      wasAutomaticallyOpened: true,
-    );
-    _notifyListenersIfAlive();
+    return codes.isEmpty ? 'URLSCAN_MALICIOUS' : codes.join(',');
   }
 
   void clearReview() {
@@ -578,7 +533,6 @@ class QrShieldViewModel extends ChangeNotifier {
       isCheckingReputation: current.isCheckingReputation,
       isCheckingAllowlist: current.isCheckingAllowlist,
       isAllowlisted: current.isAllowlisted,
-      wasAutomaticallyOpened: current.wasAutomaticallyOpened,
     );
     _notifyListenersIfAlive();
   }
@@ -600,7 +554,9 @@ class QrShieldViewModel extends ChangeNotifier {
       }
       final latestResult = latest.reputation;
       if (latestResult == null) return;
-      final latestDeadline = _reputationPolicy.reviewExpiryDeadline(latestResult);
+      final latestDeadline = _reputationPolicy.reviewExpiryDeadline(
+        latestResult,
+      );
       if (latestDeadline == null) return;
       if (latestDeadline.isAfter(_clock.now())) {
         _scheduleReputationExpiry(revision, latestResult);

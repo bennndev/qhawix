@@ -49,6 +49,13 @@ internal class QrSecurityHistoryDatabase(context: Context) :
                     "ON $TABLE_NAME(url_fingerprint) WHERE permitido = 1",
             )
         }
+        if (oldVersion < 3) {
+            // Preserve historical evidence without attributing an old scan to the new provider.
+            database.execSQL(
+                "UPDATE $TABLE_NAME SET detection_source = 'legacyReputation' " +
+                    "WHERE detection_source = 'googleWebRisk'",
+            )
+        }
     }
 
     fun recordBlockedIncident(
@@ -119,7 +126,7 @@ internal class QrSecurityHistoryDatabase(context: Context) :
                     "permitido" to (cursor.getInt(allowedIndex) == 1),
                     "puede_permitirse" to (
                         !cursor.isNull(fingerprintIndex) &&
-                            cursor.getString(sourceIndex) == "googleWebRisk" &&
+                            cursor.getString(sourceIndex) in setOf("urlscan", "legacyReputation") &&
                             cursor.getInt(allowedIndex) == 0
                         ),
                 )
@@ -136,8 +143,8 @@ internal class QrSecurityHistoryDatabase(context: Context) :
             val existing = database.query(
                 TABLE_NAME,
                 arrayOf(COLUMN_URL_FINGERPRINT),
-                "$COLUMN_ID = ? AND $COLUMN_DETECTION_SOURCE = ? AND $COLUMN_ALLOWED = 0",
-                arrayOf(id.toString(), "googleWebRisk"),
+                "$COLUMN_ID = ? AND $COLUMN_DETECTION_SOURCE IN (?, ?) AND $COLUMN_ALLOWED = 0",
+                arrayOf(id.toString(), "urlscan", "legacyReputation"),
                 null,
                 null,
                 null,
@@ -156,8 +163,8 @@ internal class QrSecurityHistoryDatabase(context: Context) :
             val updated = database.update(
                 TABLE_NAME,
                 values,
-                "$COLUMN_ID = ? AND $COLUMN_DETECTION_SOURCE = ? AND $COLUMN_ALLOWED = 0",
-                arrayOf(id.toString(), "googleWebRisk"),
+                "$COLUMN_ID = ? AND $COLUMN_DETECTION_SOURCE IN (?, ?) AND $COLUMN_ALLOWED = 0",
+                arrayOf(id.toString(), "urlscan", "legacyReputation"),
             ) > 0
             if (updated) database.setTransactionSuccessful()
             updated
@@ -173,7 +180,7 @@ internal class QrSecurityHistoryDatabase(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "qhawix_security_history.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
         private const val TABLE_NAME = "qr_security_history"
         private const val COLUMN_ID = "id"
         private const val COLUMN_TIMESTAMP = "timestamp"
